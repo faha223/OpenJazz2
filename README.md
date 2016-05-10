@@ -21,3 +21,13 @@ This project uses the art assets from the game engine directly to play the game.
 - Enemies
 - Crates
 - Destructible Environment Pieces
+
+# Dependencies
+- OpenGL (GLEW, GLU)
+- SDL2
+- On Windows:
+    - GLEW
+- On Linux:
+    - GLEW
+    - GLU
+    - Boost

@@ -21,15 +21,6 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 
-#ifdef _WIN32
-#define DUMP_DIR "C:\\Users\\Frederick\\Desktop\\temp"
-#define JAZZ2_DIR "C:\\Games\\Jazz2"
-//#define JAZZ2_DIR "D:\\Games\\Jazz2"
-#else
-#define DUMP_DIR "/home/specialfred453/Desktop/temp"
-#define JAZZ2_DIR "/home/specialfred453/Jazz2"
-#endif
-
 #define SPRITESHEET_SIZE 4096
 #define ASPECT_RATIO ((float)WindowWidth/(float)WindowHeight)
 
@@ -65,6 +56,7 @@ private:
 	GLuint framebufferTexture;
 	GLuint framebufferVBO;
 	std::string Path;
+	std::string DumpPath;
 	std::map<uint32_t, SpriteCoords> Sprites;
 	std::vector<GLuint> SpriteSheets;
 	GLuint playerVBO;

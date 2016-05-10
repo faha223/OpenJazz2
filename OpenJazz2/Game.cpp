@@ -6,7 +6,6 @@ using namespace std;
 #define DEBUG_KEYS
 
 //#define SAVE_SPRITESHEETS
-//#define GENERATE_COORDS
 
 static string VertexShader = string("#version 330\n") +
 string("uniform mat4 m_Projection;\n") +
@@ -191,8 +190,7 @@ tileset(nullptr),
 anims(nullptr),
 player(nullptr),
 Tilesheet(0),
-state(MainMenu), 
-Path(JAZZ2_DIR)
+state(MainMenu)
 {
 	string LevelFile = "";
 	string EpisodeFile = "";
@@ -218,7 +216,7 @@ Path(JAZZ2_DIR)
 	auto now = std::chrono::system_clock::now();
 	auto duration = now.time_since_epoch();
 	startTime = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() * 0.001f;
-	string Path = JAZZ2_DIR;
+	LoadSettings();
 
 	int SDL_Error = SDL_Init(SDL_INIT_EVERYTHING);
 	if (SDL_Error < 0)
@@ -233,7 +231,6 @@ Path(JAZZ2_DIR)
 
 	char buffer[256];
 	SDL_DisplayMode disp;
-	LoadSettings();
 	SDL_GetDesktopDisplayMode(0, &disp);
 	
 	if(Fullscreen)
@@ -288,7 +285,7 @@ Path(JAZZ2_DIR)
 	EpisodeFile = Path::Combine(Path, "Prince.j2e");
 	anims = new Animations(Path::Combine(Path, "Anims.j2a").c_str());
 #ifdef DUMP_ANIMATIONS
-	anims.DumpToDisk(DUMP_DIR);
+	anims.DumpToDisk(DumpPath);
 #endif
 	CreateSpritesheets();
 
@@ -1124,7 +1121,7 @@ void Game::CreateSpritesheets()
 #ifdef SAVE_SPRITESHEETS
 		char buffer[256];
 		sprintf_s(buffer, 255, "spritesheet-%02lu.bmp", i);
-		SDL_SaveBMP(spritesheet, Path::Combine(DUMP_DIR, buffer).c_str());
+		SDL_SaveBMP(spritesheet, Path::Combine(DumpPath, buffer).c_str());
 #endif
 		GLuint texture;
 		glGenTextures(1, &texture);
@@ -1229,8 +1226,11 @@ void Game::LoadSettings()
 		while (!feof(fi))
 		{
 			char buffer[256];
+			char sparam[256];
 			int param = 0;
+			memset(buffer, 0, 256);
 			fgets(buffer, 256, fi);
+			memset(sparam, 0, 256);
 			if (sscanf_s(buffer, "ResolutionX=%d", &param))
 				WindowWidth = param;
 			else if (sscanf_s(buffer, "ResolutionY=%d", &param))
@@ -1239,6 +1239,10 @@ void Game::LoadSettings()
 				Fullscreen = (param != 0);
 			else if (sscanf_s(buffer, "BorderlessFullscreen=%d", &param))
 				BorderlessFullscreen = (param != 0);
+			else if (sscanf_s(buffer, "Jazz2Dir=%[^\n]", sparam))
+				Path = string(sparam);
+			else if (sscanf_s(buffer, "DumpDir=%[^\n]", sparam))
+				DumpPath = string(sparam);
 		}
 		fclose(fi);
 	}
