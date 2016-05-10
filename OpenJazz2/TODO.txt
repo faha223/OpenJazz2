@@ -1,0 +1,13 @@
+Add Destructible Scenery (ammunition)
+Add Warps
+Add Springs
+Add Hooks
+Add Shooting states to the player
+Add bouncing ammunition logic
+Add collision detection vs. the level for fallen actors
+Add enemies
+Add Shader Effects
+Add EndLevel events
+Add Lives to HUD
+Add Weapon to HUD
+Add Gem/Coin count to HUD
