@@ -1,6 +1,12 @@
 #ifndef _STRUCTURES_H_
 #define _STRUCTURES_H_
 
+/* This logic was copied, almost verbatim, from the following resources:
+ * http://www.jazz2online.com/wiki/J2L+File+Format
+ * http://www.jazz2online.com/wiki/J2A+File+Format
+ * http://www.jazz2online.com/wiki/J2T+File+Format
+ */
+
 #include <cstdint>
 #include <string>
 #include <vector>
