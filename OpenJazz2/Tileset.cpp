@@ -2,6 +2,58 @@
 #include "FileIO.h"
 using namespace std;
 
+static uint8_t bitmap[8] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80 };
+
+Tileset::Tileset(const char *filename) :
+	TilesetInfo_1_23(nullptr),
+	TilesetInfo_1_24(nullptr)
+{
+	FILE *fi = openFile(filename, "rb");
+	if (fi == nullptr)
+	{
+		return;
+	}
+	ReadTILEHeader(fi, &header);
+
+	uint8_t *compressed = new uint8_t[header.CData1];
+	fread(compressed, 1, header.CData1, fi);
+	Data1 = new uint8_t[header.UData1];
+	uLongf ucompSize = (uLongf)header.UData1;
+	uncompress(Data1, &ucompSize, compressed, header.CData1);
+	delete[] compressed;
+
+	ReadTilesetInfo();
+
+	compressed = new uint8_t[header.CData2];
+	fread(compressed, 1, header.CData2, fi);
+	Data2 = new uint8_t[header.UData2];
+	ucompSize = (uLongf)header.UData2;
+	uncompress(Data2, &ucompSize, compressed, header.CData2);
+	delete[] compressed;
+
+	ReadTileImages();
+
+	compressed = new uint8_t[header.CData3];
+	fread(compressed, 1, header.CData3, fi);
+	Data3 = new uint8_t[header.UData3];
+	ucompSize = (uLongf)header.UData3;
+	uncompress(Data3, &ucompSize, compressed, header.CData3);
+	delete[] compressed;
+
+	ReadTileTransparency();
+
+	compressed = new uint8_t[header.CData4];
+	fread(compressed, 1, header.CData4, fi);
+	Data4 = new uint8_t[header.UData4];
+	ucompSize = (uLongf)header.UData4;
+	uncompress(Data4, &ucompSize, compressed, header.CData4);
+	delete[] compressed;
+
+	ReadTileClipping();
+
+	fclose(fi);
+}
+
 void Tileset::ReadTilesetInfo()
 {
 	if (Data1 != nullptr)
@@ -198,56 +250,6 @@ void Tileset::ReadTileClipping()
 	}
 }
 
-Tileset::Tileset(const char *filename) :
-TilesetInfo_1_23(nullptr),
-TilesetInfo_1_24(nullptr)
-{
-	FILE *fi = openFile(filename, "rb");
-	if (fi == nullptr)
-	{
-		return;
-	}
-	ReadTILEHeader(fi, &header);
-
-	uint8_t *compressed = new uint8_t[header.CData1];
-	fread(compressed, 1, header.CData1, fi);
-	Data1 = new uint8_t[header.UData1];
-	uLongf ucompSize = (uLongf)header.UData1;
-	uncompress(Data1, &ucompSize, compressed, header.CData1);
-	delete[] compressed;
-
-	ReadTilesetInfo();
-
-	compressed = new uint8_t[header.CData2];
-	fread(compressed, 1, header.CData2, fi);
-	Data2 = new uint8_t[header.UData2];
-	ucompSize = (uLongf)header.UData2;
-	uncompress(Data2, &ucompSize, compressed, header.CData2);
-	delete[] compressed;
-
-	ReadTileImages();
-
-	compressed = new uint8_t[header.CData3];
-	fread(compressed, 1, header.CData3, fi);
-	Data3 = new uint8_t[header.UData3];
-	ucompSize = (uLongf)header.UData3;
-	uncompress(Data3, &ucompSize, compressed, header.CData3);
-	delete[] compressed;
-
-	ReadTileTransparency();
-
-	compressed = new uint8_t[header.CData4];
-	fread(compressed, 1, header.CData4, fi);
-	Data4 = new uint8_t[header.UData4];
-	ucompSize = (uLongf)header.UData4;
-	uncompress(Data4, &ucompSize, compressed, header.CData4);
-	delete[] compressed;
-
-	ReadTileClipping();
-
-	fclose(fi);
-}
-
 uint32_t Tileset::NumTiles() const
 {
 	if (TilesetInfo_1_23 != nullptr)
@@ -256,8 +258,6 @@ uint32_t Tileset::NumTiles() const
 		return TilesetInfo_1_24->TileCount;
 	return 0;
 }
-
-static uint8_t bitmap[8] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80 };
 
 uint8_t *Tileset::GetTile(const uint32_t &index, const bool &flipped) const
 {

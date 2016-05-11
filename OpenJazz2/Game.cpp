@@ -282,7 +282,7 @@ state(MainMenu)
 		if (Files.size() > 0)
 			EpisodeFile = Files[0];
 	}
-	EpisodeFile = Path::Combine(Path, "Prince.j2e");
+	EpisodeFile = Path::Combine(Path, Episode);
 	anims = new Animations(Path::Combine(Path, "Anims.j2a").c_str());
 #ifdef DUMP_ANIMATIONS
 	anims.DumpToDisk(DumpPath);
@@ -1218,8 +1218,20 @@ void LoadShaders()
 	delete[] fragmentShaderSource;
 }
 
+bool _startsWith(const char *a, const char *b)
+{
+	if (strlen(a) < strlen(b))
+		return false;
+	for (int i = 0; i < strlen(b); i++)
+		if (a[i] != b[i])
+			return false;
+	return true;
+}
+
 void Game::LoadSettings()
 {
+	Episode = "Prince.j2e"; // Set a default
+
 	FILE *fi = openFile("Settings.ini", "r");
 	if (fi != nullptr)
 	{
@@ -1230,6 +1242,8 @@ void Game::LoadSettings()
 			int param = 0;
 			memset(buffer, 0, 256);
 			fgets(buffer, 256, fi);
+			if (buffer[strlen(buffer) - 1 == '\n'])
+				buffer[strlen(buffer) - 1] = '\0';
 			memset(sparam, 0, 256);
 			if (sscanf_s(buffer, "ResolutionX=%d", &param))
 				WindowWidth = param;
@@ -1239,10 +1253,12 @@ void Game::LoadSettings()
 				Fullscreen = (param != 0);
 			else if (sscanf_s(buffer, "BorderlessFullscreen=%d", &param))
 				BorderlessFullscreen = (param != 0);
-			else if (sscanf_s(buffer, "Jazz2Dir=%[^\n]", sparam))
-				Path = string(sparam);
-			else if (sscanf_s(buffer, "DumpDir=%[^\n]", sparam))
-				DumpPath = string(sparam);
+			else if (_startsWith(buffer, "Jazz2Dir="))
+				Path = &buffer[9];
+			else if (_startsWith(buffer, "DumpDir="))
+				DumpPath = &buffer[8];
+			else if (_startsWith(buffer, "Episode="))
+				Episode = &buffer[8];
 		}
 		fclose(fi);
 	}

@@ -57,6 +57,7 @@ private:
 	GLuint framebufferVBO;
 	std::string Path;
 	std::string DumpPath;
+	std::string Episode;
 	std::map<uint32_t, SpriteCoords> Sprites;
 	std::vector<GLuint> SpriteSheets;
 	GLuint playerVBO;
