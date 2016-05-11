@@ -1245,20 +1245,23 @@ void Game::LoadSettings()
 			if (buffer[strlen(buffer) - 1 == '\n'])
 				buffer[strlen(buffer) - 1] = '\0';
 			memset(sparam, 0, 256);
-			if (sscanf_s(buffer, "ResolutionX=%d", &param))
-				WindowWidth = param;
-			else if (sscanf_s(buffer, "ResolutionY=%d", &param))
-				WindowHeight = param;
-			else if (sscanf_s(buffer, "Fullscreen=%d", &param))
-				Fullscreen = (param != 0);
-			else if (sscanf_s(buffer, "BorderlessFullscreen=%d", &param))
-				BorderlessFullscreen = (param != 0);
-			else if (_startsWith(buffer, "Jazz2Dir="))
-				Path = &buffer[9];
-			else if (_startsWith(buffer, "DumpDir="))
-				DumpPath = &buffer[8];
-			else if (_startsWith(buffer, "Episode="))
-				Episode = &buffer[8];
+			if (strlen(buffer))
+			{
+				if (sscanf_s(buffer, "ResolutionX=%d", &param))
+					WindowWidth = param;
+				else if (sscanf_s(buffer, "ResolutionY=%d", &param))
+					WindowHeight = param;
+				else if (sscanf_s(buffer, "Fullscreen=%d", &param))
+					Fullscreen = (param != 0);
+				else if (sscanf_s(buffer, "BorderlessFullscreen=%d", &param))
+					BorderlessFullscreen = (param != 0);
+				else if (_startsWith(buffer, "Jazz2Dir="))
+					Path = &buffer[9];
+				else if (_startsWith(buffer, "DumpDir="))
+					DumpPath = &buffer[8];
+				else if (_startsWith(buffer, "Episode="))
+					Episode = &buffer[8];
+			}
 		}
 		fclose(fi);
 	}
