@@ -149,6 +149,17 @@ uint8_t Actor::GetMoneyAdd() const
 	}
 }
 
+uint8_t Actor::GetLivesAdd() const
+{
+	switch (eventId)
+	{
+	case ExtraLive:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
 uint8_t Actor::GetGemValue() const
 {
 	switch(eventId)
@@ -194,6 +205,8 @@ uint16_t Actor::GetPointValue() const
 		case RedGemPlus1:
 		case PurpleGemPlus1:
 			return 100;
+		case ExtraLive:
+			return 2000;
 		default:
 			return isFood() ? 50 : 0;
 	}
@@ -232,6 +245,7 @@ bool Actor::AddsSparkleOnDeath() const
 		case GreenGemPlus1:
 		case RedGemPlus1:
 		case PurpleGemPlus1:
+		case ExtraLive:
 			return true;
 		default:
 			return isFood();	

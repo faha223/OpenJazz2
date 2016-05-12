@@ -180,6 +180,53 @@ void DrawHealth(int Health, const SpriteCoords &coords, const float &x, const fl
 	}
 }
 
+void DrawLives(int lives, const SpriteCoords &coords, const Animation *font, const map<uint32_t, SpriteCoords> *sprites, const float &x, const float &y)
+{
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	vertex *headVerts = new vertex[4];
+	int length = 0;
+
+	#pragma region Draw Player Head 
+
+	headVerts[0].x = length;
+	headVerts[0].y = 0;
+	headVerts[0].z = 0;
+	headVerts[0].s = ((float)(coords.x)) / (float)SPRITESHEET_SIZE;
+	headVerts[0].t = ((float)(coords.y)) / (float)SPRITESHEET_SIZE;
+	headVerts[1].x = length;
+	headVerts[1].y = coords.height;
+	headVerts[1].z = 0;
+	headVerts[1].s = ((float)(coords.x)) / (float)SPRITESHEET_SIZE;
+	headVerts[1].t = ((float)(coords.y + coords.height)) / (float)SPRITESHEET_SIZE;
+	headVerts[2].x = length + coords.width;
+	headVerts[2].y = coords.height;
+	headVerts[2].z = 0;
+	headVerts[2].s = ((float)(coords.x + coords.width)) / (float)SPRITESHEET_SIZE;
+	headVerts[2].t = ((float)(coords.y + coords.height)) / (float)SPRITESHEET_SIZE;
+	headVerts[3].x = length + coords.width;
+	headVerts[3].y = 0;
+	headVerts[3].z = 0;
+	headVerts[3].s = ((float)(coords.x + coords.width)) / (float)SPRITESHEET_SIZE;
+	headVerts[3].t = ((float)(coords.y)) / (float)SPRITESHEET_SIZE;
+	length += coords.width;
+
+	#pragma endregion Draw Player Head
+
+	glDisable(GL_DEPTH_TEST);
+		
+	glTranslatef(x, y-coords.height, 0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glVertexPointer(3, GL_FLOAT, sizeof(vertex), &headVerts[0].x);
+	glTexCoordPointer(2, GL_FLOAT, sizeof(vertex), &headVerts[0].s);
+	glDrawArrays(GL_QUADS, 0, 4);
+	glEnable(GL_DEPTH_TEST);
+	delete[] headVerts;
+
+	DrawText(font, sprites, vec2(x + coords.width, y-24), Left, "x%d", lives);
+}
+
 Game::Game(int argc, char *argv[]) :
 WindowWidth(640), 
 WindowHeight(480), 
@@ -374,8 +421,12 @@ void Game::GotoNextLevel()
 void Game::RestartLevel()
 {
 	printf("Bust a Move!\n");
+	int lives = -1;
 	if (player != nullptr)
+	{
+		lives = player->GetLives();
 		delete player;
+	}
 	player = nullptr;
 
 	for (int i = 0; i < level->GetTileCount(3); i++)
@@ -386,7 +437,8 @@ void Game::RestartLevel()
 	TileCoord playerStart = level->GetPlayerStart(false);
 	printf("Player starting at tile %d, %d\n", playerStart.x, playerStart.y);
 	player = new Player(vec2(playerStart.x*32.0f, (playerStart.y + 1)*32.0f), level, tileset, anims);
-
+	if(lives >= 0)
+		player->InitLives(lives);
 
 	for (uint32_t i = 0; i < level->GetLayerHeight(3); i++)
 	{
@@ -440,6 +492,8 @@ void Game::Run()
 
 		glBindTexture(GL_TEXTURE_2D, Tilesheet);
 
+		#pragma region Draw the Layers
+
 		for (int i = 7; i >= 0; i--)
 		{
 			if ((LayerVertexCount[i] > 0) && (player->GetHealth() > 0))
@@ -450,8 +504,8 @@ void Game::Run()
 				TileY = TileY && !limitToVisibleRegion;
 				float LayerWidth = 32.0f * level->GetLayerWidth(i);
 				float LayerHeight = 32.0f * level->GetLayerHeight(i);
-				int LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(i));
-				int LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(i));
+				int LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(i) + level->GetLayerAutoXSpeed(i));
+				int LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(i) + level->GetLayerAutoYSpeed(i));
 
 				glBindBuffer(GL_ARRAY_BUFFER, Layers[i]);
 				glVertexPointer(3, GL_FLOAT, 5 * sizeof(float), (void*)0);
@@ -581,6 +635,11 @@ void Game::Run()
 									player->AddGems(actor->GetGemType(), actor->GetGemValue());
 									consumed = true;
 								}
+								if (actor->GetLivesAdd() > 0)
+								{
+									player->AddLives(actor->GetLivesAdd());
+									consumed = true;
+								}
 								if(consumed)
 								{
 									player->AddPoints(actor->GetPointValue());
@@ -608,11 +667,9 @@ void Game::Run()
 
 				if (!player->IsInvisible())
 				{
-					// This will need to be changed so that the animation frame is returned from the player, not retrieved manually from the anim library.
 					const AnimationFrame *frame = player->GetSprite();
 					vec2 Hotspot = frame->getHotSpot();
-					//printf("Hotspot: %02f, %02f\n", Hotspot.x, Hotspot.y);
-					//printf("Coldspot: %02f, %02f\n", Coldspot.x, Coldspot.y);
+
 					SpriteCoords coord = Sprites[frame->getIndex()];
 					int flipped = (player->GetFacing() == -1);
 
@@ -712,6 +769,10 @@ void Game::Run()
 			}
 		}
 
+		#pragma endregion Draw the Layers
+
+		#pragma region Draw the HUD
+
 		glLoadIdentity();
 		glBindTexture(GL_TEXTURE_2D, SpriteSheets[0]);
 		float depth = level->GetLayerZ(3);
@@ -719,14 +780,23 @@ void Game::Run()
 		int LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(3));
 		glTranslatef(LayerXOffset, LayerYOffset, 0.0f);
 		DrawText(anims->GetAnimSet(ANIM_SET_MENU)->GetAnim(ANIM_SPRITEFONT_LARGE), &Sprites, vec2(7, 2), Left, "%07d", player->GetScore());
+		
 		const AnimationFrame *animFrame = anims->GetAnimSet(ANIM_SET_ITEMS)->GetAnim(ANIM_HEART)->GetFrame(0);
 		DrawHealth(player->GetHealth(), Sprites[animFrame->getIndex()], (ASPECT_RATIO * 480.0f) - 8, 3, Right);
+
+		const Animation *anim = anims->GetAnimSet(ANIM_SET_HEADS)->GetAnim(ANIM_HEAD_JAZZ);
+		animFrame = anim->GetFrame((int)floor(anim->GetFrameRate() * timeElapsed) % anim->GetFrameCount());
+		DrawLives(player->GetLives(), Sprites[animFrame->getIndex()], anims->GetAnimSet(ANIM_SET_MENU)->GetAnim(ANIM_SPRITEFONT_LARGE), &Sprites, 4, 476);
+		
+ 		#pragma endregion Draw the HUD
+
+		#pragma region Draw the Frame to the Window
 
 		glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
 		glClear(GL_DEPTH_BUFFER_BIT);
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		glOrtho(0, 1, 1, 0, 500, -500);
+		glOrtho(0, 1, 1, 0, -500, 500);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 
@@ -735,6 +805,8 @@ void Game::Run()
 		glVertexPointer(3, GL_FLOAT, 5 * sizeof(float), (void*)0);
 		glTexCoordPointer(2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 		glDrawArrays(GL_QUADS, 0, 4);
+
+		#pragma endregion Draw the Frame to the Window
 
 		SDL_Event e;
 		while (SDL_PollEvent(&e))
@@ -767,6 +839,7 @@ void Game::Run()
 		ControlState[JUMP] = false;
 		ControlState[SHOOT] = false;
 		ControlState[RUN] = false;
+
 		for (multimap<Control, uint32_t>::iterator i = KeyBindings.begin(); i != KeyBindings.end(); i++)
 			ControlState[LEFT] |= ((i->first == LEFT) ? keyboard[i->second] : false);
 		for (multimap<Control, uint32_t>::iterator i = JoyBindings.begin(); i != JoyBindings.end(); i++)
@@ -795,6 +868,7 @@ void Game::Run()
 			ControlState[RUN] |= ((i->first == RUN) ? keyboard[i->second] : false);
 		for (multimap<Control, uint32_t>::iterator i = JoyBindings.begin(); i != JoyBindings.end(); i++)
 			ControlState[RUN] |= ((i->first == RUN) ? joystick[i->second] : false);
+
 		player->Update(max(1.0f / 60.0f, sinceLastUpdate), ControlState);
 		if(player->GetState() == BUTTSTOMP)
 		{
@@ -825,6 +899,7 @@ void Game::Run()
 					level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord - 1) + tileXCoord, 1);
 			}
 		}
+		
 		if (sinceLastUpdate < (1.0f / 60.0f))
 		{
 			SDL_Delay(1000 * ((1.0f / 60.0f) - sinceLastUpdate));
@@ -843,7 +918,15 @@ void Game::Run()
 
 		if (player->GetState() == DEAD)
 		{
-			RestartLevel();
+			if (player->GetLives() == 0)
+			{
+				quit = true;
+			}
+			else
+			{
+				player->AddLives(255);
+				RestartLevel();
+			}
 		}
 
 		if(player->GetState() == LEVEL_ENDED)

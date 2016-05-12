@@ -108,6 +108,7 @@ private:
 	bool canLoseBalance;
 	float timeSinceStateChanged = 0;
 	int8_t health;
+	int8_t lives;
 	uint32_t score;
 	int8_t food;
 	uint32_t money;
@@ -132,11 +133,14 @@ private:
 public:
 	Player(const vec2 &startPosition, const Level *level, const Tileset *tileset, const Animations *anims);
 	~Player();
+	void InitLives(const uint32_t lives);
 	PlayerState GetState() const;
 	vec2 GetPosition() const;
 	Rect GetBoundingBox() const;
 	int GetFacing() const;
 	const AnimationFrame *GetSprite() const;
+	uint32_t GetLives() const;
+	void AddLives(uint8_t add);
 	uint32_t GetHealth() const;
 	uint32_t GetScore() const;
 	uint8_t AddHealth(const uint8_t &add);

@@ -323,6 +323,30 @@ float Level::GetLayerYSpeed(const uint32_t &layer) const
 	return 0;
 }
 
+float Level::GetLayerAutoXSpeed(const uint32_t &layer) const
+{
+	if (layer <= 7)
+	{
+		if (Data1_1_23 != nullptr)
+		{
+			return (float)Data1_1_23->LayerAutoXSpeed[layer] / (float)Data1_1_23->LayerXSpeed[3];
+		}
+	}
+	return 0;
+}
+
+float Level::GetLayerAutoYSpeed(const uint32_t &layer) const
+{
+	if (layer <= 7)
+	{
+		if (Data1_1_23 != nullptr)
+		{
+			return (float)Data1_1_23->LayerAutoYSpeed[layer] / (float)Data1_1_23->LayerYSpeed[3];
+		}
+	}
+	return 0;
+}
+
 int32_t Level::GetLayerZ(const uint32_t &layer) const
 {
 	if (layer < 8)

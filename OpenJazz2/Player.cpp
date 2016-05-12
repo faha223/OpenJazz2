@@ -27,6 +27,7 @@ timeSinceStateChanged(0),
 state(STANDING),
 lastTileCoord(0),
 quad(nullptr), 
+lives(3),
 health(5), 
 score(0),
 food(0),
@@ -38,6 +39,11 @@ PurpleGems(0),
 Invincible(true), 
 TimeSinceMadeInvincible(0)
 { }
+
+void Player::InitLives(const uint32_t lives)
+{
+	this->lives = lives;
+}
 
 vec2 Player::GetPosition() const
 {
@@ -61,7 +67,6 @@ PlayerState Player::GetState() const
 
 const AnimationFrame *Player::GetSprite() const
 {
-	//return anims->GetAnimSet(ANIM_SET_JAZZ)->GetAnim(ANIM_JAZZ_IDLE1)->GetFrame(0);
 	bool FirstFrameOnly = false;
 	bool LastFrameOnly = false;
 	bool ClampFrame = false;
@@ -1100,6 +1105,16 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 uint32_t Player::GetHealth() const
 {
 	return max(0, health);
+}
+
+uint32_t Player::GetLives() const
+{
+	return max(0, lives);
+}
+
+void Player::AddLives(uint8_t add)
+{
+	lives += add;
 }
 
 uint32_t Player::GetScore() const

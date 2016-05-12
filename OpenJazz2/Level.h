@@ -49,6 +49,8 @@ public:
 	uint32_t GetLayerHeight(const uint32_t &layer) const;
 	float GetLayerXSpeed(const uint32_t &layer) const;
 	float GetLayerYSpeed(const uint32_t &layer) const;
+	float GetLayerAutoXSpeed(const uint32_t &layer) const;
+	float GetLayerAutoYSpeed(const uint32_t &layer) const;
 	int32_t GetLayerZ(const uint32_t &layer) const;
 	uint32_t GetTileCount(const uint32_t &layer) const;
 	J2L_Tile GetTile(const uint32_t &layer, const uint32_t &tileXCoord, const uint32_t &tileYCoord, const float &timeElapsed) const;

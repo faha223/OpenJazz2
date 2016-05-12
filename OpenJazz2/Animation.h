@@ -4,7 +4,10 @@
 #include "Structures.h"
 #include "Math.h"
 
-#pragma region ANIMATION DEFINES
+#pragma region Animation Set Defines
+
+#pragma region Jazz Player Animations
+
 #define ANIM_SET_JAZZ 54
 #define ANIM_JAZZ_HOVERBOARD 1
 #define ANIM_JAZZ_HOVERBOARD_TURN_AROUND 2
@@ -61,6 +64,16 @@
 #define ANIM_JAZZ_SWIM_UP 85
 #define ANIM_JAZZ_SWINGING 86
 #define ANIM_JAZZ_VPOLE 92
+
+#pragma endregion Jazz Player Animations
+
+#pragma region Spaz Player Animations
+
+#define ANIM_SET_SPAZ 85
+
+#pragma endregion Spaz Player Animations
+
+#pragma region Item Animations
 
 #define ANIM_SET_ITEMS 67
 #define ANIM_1UP 0
@@ -143,17 +156,50 @@
 #define ANIM_WOODEN_SHARD_1 93
 #define ANIM_WOODEN_SHARD_2 94
 
-#define ANIM_SET_SPAZ 85
+#pragma endregion Item Animations
+
+#pragma region Game Setup Menu Animations
 
 #define ANIM_SET_GAME_SETUP_MENU 60
+
+#pragma endregion Game Setup Menu Animations
+
+#pragma region Head Animations
+
+#define ANIM_SET_HEADS 38
+#define ANIM_HEAD_JAZZ 3
+#define ANIM_HEAD_SPAZ 4
+
+#pragma endregion Head Animations
+
+#pragma region Menu Animations
 
 #define ANIM_SET_MENU 61
 #define FONT_OFFSET -32
 #define ANIM_SPRITEFONT_LARGE 0
 #define ANIM_SPRITEFONT_SMALL 1
+
 #define ANIM_TITLE_BIG 2
 #define ANIM_TITLE_SMALL 3
-#pragma endregion
+
+#pragma endregion Menu Animations
+
+#pragma region Spring Animations
+
+#define ANIM_SET_SPRINGS 92
+#define ANIM_SPRING_UP_BLUE 0
+#define ANIM_SPRING_RT_BLUE 1
+#define ANIM_SPRING_DN_BLUE 2
+#define ANIM_SPRING_DN_GREEN 3
+#define ANIM_SPRING_DN_RED 4
+#define ANIM_SPRING_UP_GREEN 5
+#define ANIM_SPRING_RT_GREEN 6
+#define ANIM_SPRING_UP_RED 7
+#define ANIM_SPRING_RT_RED 8
+
+#pragma endregion Spring Animations
+
+#pragma endregion Animation Set Defines
 
 class FrameImage
 {

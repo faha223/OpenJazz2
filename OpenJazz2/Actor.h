@@ -33,6 +33,7 @@ public:
 	uint8_t GetMoneyAdd() const;
 	uint8_t GetGemValue() const;
 	GemType GetGemType() const;
+	uint8_t GetLivesAdd() const;
 	uint16_t GetPointValue() const;
 	bool AddsSparkleOnDeath() const;
 	bool CheckCollision(const Player *player, const std::map<uint32_t, SpriteCoords> &sprites) const;
