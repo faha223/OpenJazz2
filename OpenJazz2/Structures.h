@@ -29,7 +29,7 @@
 
 #define ANIM_COUNT 109
 
-#pragma region helper functions
+#pragma region Helper functions
 
 template<typename Type>
 inline void ReadAndAdvance(Type &value, uint8_t *bytes, int &offset)
@@ -68,7 +68,7 @@ enum GemType
 	GT_Purple
 };
 
-#pragma endregion
+#pragma endregion Helper Functions
 
 #pragma region File Data Structures
 
@@ -585,7 +585,7 @@ public:
 	std::vector<uint16_t> Layers[8];
 };
 
-#pragma endregion
+#pragma endregion Level Structures
 
 #pragma region Tileset Structures
 
@@ -627,7 +627,7 @@ struct J2T_TileClip {
 	uint8_t ClippingMask[128];
 };
 
-#pragma endregion
+#pragma endregion Tileset Structures
 
 #pragma region Animation Structures
 
@@ -682,7 +682,7 @@ struct FrameInfo
 	uint32_t MaskAddress;   // Address in Data3 where mask starts
 };
 
-#pragma endregion
+#pragma endregion Animation Structures
 
 #pragma region Episode Structures
 
@@ -704,9 +704,9 @@ struct J2E_Header
 	uint32_t Unknown5;
 };
 
-#pragma endregion
+#pragma endregion Episode Structures
 
-#pragma endregion
+#pragma endregion File Data Structures
 
 #pragma region Loader Functions
 
@@ -1013,6 +1013,6 @@ inline void ReadJ2EHeader(FILE *fi, J2E_Header *header)
 	fread(&header->Unknown5, sizeof(uint32_t), 1, fi);
 }
 
-#pragma endregion
+#pragma endregion Loader Functions
 
 #endif

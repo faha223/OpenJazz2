@@ -199,6 +199,34 @@
 
 #pragma endregion Spring Animations
 
+#pragma region NPCs
+
+#pragma region Bonus
+
+// Each of these only have 1 animation, so just one define for the animation should be sufficient
+#define ANIM_BONUS 0 
+#define ANIM_BONUS_VACANT 1
+
+#define ANIM_SET_BONUS_VACANT 11
+#define ANIM_SET_BONUS_10 103
+#define ANIM_SET_BONUS_100 104
+#define ANIM_SET_BONUS_20 105
+#define ANIM_SET_BONUS_50 106
+
+#pragma endregion Bonus
+
+#pragma endregion NPCs
+
+#pragma region Enemies
+
+#define ANIM_SET_WITCH 108
+#define ANIM_WITCH_CAST 0
+#define ANIM_WITCH_DEATH 1
+#define ANIM_WITCH_FLY 2
+#define ANIM_WITCH_SPELL 3
+
+#pragma endregion Enemies
+
 #pragma endregion Animation Set Defines
 
 class FrameImage
