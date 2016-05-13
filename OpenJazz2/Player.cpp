@@ -1,4 +1,6 @@
 #include "Player.h"
+#include "Actor.h"
+
 #include "Event.h"
 #include <cstdlib>
 //#define SAVE_QUAD
@@ -1545,6 +1547,52 @@ CollisionInfo Player::CheckCollision(const vec2 &PreviousPosition)
 	delete[] clip;
 
 	return coll;
+}
+
+bool Player::CollidedWithActor(const Actor &actor)
+{
+	bool consumed = false;
+	uint8_t remaining = AddHealth(actor.GetHealthAdd());
+	consumed = (remaining != actor.GetHealthAdd());
+	if (actor.isFood())
+	{
+		AddFood(actor.isFood() ? 1 : 0);
+		consumed = true;
+	}
+	if (actor.GetMoneyAdd() > 0)
+	{
+		AddMoney(actor.GetMoneyAdd());
+		consumed = true;
+	}
+	if (actor.GetGemValue() > 0)
+	{
+		AddGems(actor.GetGemType(), actor.GetGemValue());
+		consumed = true;
+	}
+	if (actor.GetLivesAdd() > 0)
+	{
+		AddLives(actor.GetLivesAdd());
+		consumed = true;
+	}
+	if (actor.GetEventID() == RedSpring)
+	{
+		Velocity.y = JumpVelocity * 1.5;
+		SetState(JUMPING);
+		grounded = false;
+	}
+	else if (actor.GetEventID() == GreenSpring)
+	{
+		Velocity.y = JumpVelocity * 2.25;
+		SetState(JUMPING);
+		grounded = false;
+	}
+	else if (actor.GetEventID() == BlueSpring)
+	{
+		Velocity.y = JumpVelocity * 2.5;
+		SetState(JUMPING);
+		grounded = false;
+	}
+	return consumed;
 }
 
 Player::~Player()

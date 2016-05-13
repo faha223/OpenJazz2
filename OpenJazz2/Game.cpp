@@ -449,7 +449,7 @@ void Game::RestartLevel()
 			EventID eventId = (EventID)level->GetEvents(j, i).EventID;
 			if (eventId != EventID::None)
 			{
-				BackgroundActors.push_back(Actor(vec2((j*32.0f) + 16.0f, (i*32.0f)), eventId, anims, 0));
+				BackgroundActors.push_back(Actor(level, tileset, vec2((j*32.0f) + 16.0f, (i*32.0f)), eventId, anims, 0));
 			}
 		}
 	}	
@@ -575,7 +575,7 @@ void Game::Run()
 				int LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(3));
 				glTranslatef(LayerXOffset, LayerYOffset, 0.0f);
 
-				if(player->GetHealth() > 0)
+				if (player->GetHealth() > 0)
 				{
 					glBindBuffer(GL_ARRAY_BUFFER, ActorsVBO);
 					for (size_t actor_i = 0; actor_i < BackgroundActors.size(); actor_i++)
@@ -584,11 +584,24 @@ void Game::Run()
 						const AnimationFrame *frame = actor->GetFrame();
 						if (frame != nullptr)
 						{
-							vec2 Hotspot = frame->getHotSpot();
+							vec2 Coldspot = frame->getColdSpot();
 							SpriteCoords coords = Sprites[frame->getIndex()];
 							vec2 position = actor->GetPosition();
-							position += vec2(Hotspot.x, coords.height + Hotspot.y - 12);
 							vertex actorVerts[4];
+
+							switch (actor->GetEventID())
+							{
+							case RedSpring:
+							case GreenSpring:
+							case BlueSpring:
+								while ((int)position.y % 32 > 0)
+									position.y = ((int)position.y) + 1;
+								position += vec2(0, 32);
+								position += vec2(Coldspot.x, Coldspot.y);
+								break;
+							default:
+								position += vec2(Coldspot.x, Coldspot.y);
+							}
 
 							actorVerts[0].x = position.x;
 							actorVerts[0].y = position.y;
@@ -618,28 +631,8 @@ void Game::Run()
 							bool consumed = false;
 							if(actor->CheckCollision(player, Sprites))
 							{
-								uint8_t remaining = player->AddHealth(actor->GetHealthAdd());
-								consumed = (remaining != actor->GetHealthAdd());
-								if(actor->isFood())
-								{
-									player->AddFood(actor->isFood() ? 1 : 0);
-									consumed = true;
-								}
-								if(actor->GetMoneyAdd() > 0)
-								{
-									player->AddMoney(actor->GetMoneyAdd());
-									consumed = true;
-								}
-								if(actor->GetGemValue() > 0)
-								{
-									player->AddGems(actor->GetGemType(), actor->GetGemValue());
-									consumed = true;
-								}
-								if (actor->GetLivesAdd() > 0)
-								{
-									player->AddLives(actor->GetLivesAdd());
-									consumed = true;
-								}
+								consumed = player->CollidedWithActor(*actor);
+								
 								if(consumed)
 								{
 									player->AddPoints(actor->GetPointValue());
@@ -651,7 +644,7 @@ void Game::Run()
 								if(actor->AddsSparkleOnDeath())
 								{
 									vec2 sparklePos = actor->GetPosition();
-									ForegroundActors.push_back(Actor(vec2(sparklePos.x, sparklePos.y+16), Sparkle, anims, 0));
+									ForegroundActors.push_back(Actor(level, tileset, vec2(sparklePos.x, sparklePos.y+16), Sparkle, anims, 0));
 								}
 								BackgroundActors[actor_i] = BackgroundActors.back();
 								BackgroundActors.pop_back();
@@ -710,7 +703,7 @@ void Game::Run()
 					glDrawArrays(GL_QUADS, 0, 4);
 				}
 
-				if(player->GetHealth() > 0)
+				if (player->GetHealth() > 0)
 				{
 					glBindBuffer(GL_ARRAY_BUFFER, ActorsVBO);
 					for (size_t actor_i = 0; actor_i < ForegroundActors.size(); actor_i++)

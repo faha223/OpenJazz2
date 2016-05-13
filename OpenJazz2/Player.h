@@ -97,6 +97,8 @@ struct CollisionInfo
 	int iTop;
 };
 
+class Actor;
+
 class Player
 {
 private:
@@ -152,6 +154,7 @@ public:
 	uint8_t AddFood(const uint8_t &food);
 	uint8_t AddMoney(const uint8_t &add);
 	uint8_t AddGems(const GemType &type, const uint8_t &add);
+	bool CollidedWithActor(const Actor &actor);
 	bool IsInvisible() const;
 	void Update(const float &timeSinceLastUpdate, std::map<Control, bool> Keyboard);
 };

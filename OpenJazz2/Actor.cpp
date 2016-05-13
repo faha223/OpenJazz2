@@ -1,14 +1,31 @@
 #include "Actor.h"
+#include "Player.h"
+#include "Level.h"
+#include "Tileset.h"
 #include <time.h>
 #include <SDL2/SDL.h>
 using namespace std;
 
 #define ActorFloatingRadius 4.0f  // Number of pixels it oscillates per second
 #define ActorFloatingPeriod 6.75f // Number of radians it cycles of oscillation per second
+#define FallingGravity 768.0f	  // Measured
 
 static int32_t nextOffsetPoint = 0;
 
-Actor::Actor(const vec2 &location, const EventID &eventId, const Animations *anims, const float &TTL) : eventId(eventId), Location(location), anim(nullptr), TTL(TTL), Age(0), DoesNotFloat(false), SpeedModifier(1.0f)
+Actor::Actor(const Level *level, const Tileset *tileset, const vec2 &location, const EventID &eventId, const Animations *anims, const float &TTL) :
+	eventId(eventId),
+	Location(location),
+	Velocity(vec2()),
+	anim(nullptr),
+	TTL(TTL),
+	Age(0),
+	DoesNotFloat(false),
+	SpeedModifier(1.0f),
+	AffectedByGravity(false),
+	level(level),
+	tileset(tileset),
+	lastTileCoord(0),
+	quad(nullptr)
 {
 	const AnimationSet *items = anims->GetAnimSet(ANIM_SET_ITEMS);
 	const AnimationSet *springs = anims->GetAnimSet(ANIM_SET_SPRINGS);
@@ -86,25 +103,62 @@ Actor::Actor(const vec2 &location, const EventID &eventId, const Animations *ani
 		anim = springs->GetAnim(ANIM_SPRING_UP_RED);
 		DoesNotFloat = true;
 		break;
+	case GreenSpring:
+		anim = springs->GetAnim(ANIM_SPRING_UP_GREEN);
+		DoesNotFloat = true;
+		break;
+	case BlueSpring:
+		anim = springs->GetAnim(ANIM_SPRING_UP_GREEN);
+		DoesNotFloat = true;
+		break;
 	}
 	PeriodInitialOffset = (nextOffsetPoint++) * (ActorFloatingPeriod / 4.0f);
 	nextOffsetPoint %= 4;
 }
 
-Actor::Actor(const Actor &other) : eventId(other.eventId), Location(other.Location), anim(other.anim), TTL(other.TTL), Age(other.Age), DoesNotFloat(other.DoesNotFloat), PeriodInitialOffset(other.PeriodInitialOffset), SpeedModifier(other.SpeedModifier)
+Actor::Actor(const Actor &other) :
+	eventId(other.eventId),
+	Location(other.Location),
+	Velocity(other.Velocity),
+	anim(other.anim),
+	TTL(other.TTL), Age(other.Age),
+	DoesNotFloat(other.DoesNotFloat),
+	PeriodInitialOffset(other.PeriodInitialOffset),
+	SpeedModifier(other.SpeedModifier),
+	AffectedByGravity(other.AffectedByGravity),
+	level(other.level),
+	tileset(other.tileset),
+	lastTileCoord(other.lastTileCoord),
+	quad(other.quad)
 {
+	if (quad != nullptr)
+	{
+		quad = new uint8_t[96 * 96];
+		memcpy(quad, other.quad, 96 * 96);
+	}
 }
 
 Actor Actor::operator =(const Actor &other)
 {
 	eventId = other.eventId;
 	Location = other.Location;
+	Velocity = other.Velocity;
 	anim = other.anim;
 	TTL = other.TTL;
 	Age = other.Age;
 	DoesNotFloat = other.DoesNotFloat;
 	PeriodInitialOffset = other.PeriodInitialOffset;
 	SpeedModifier = other.SpeedModifier;
+	AffectedByGravity = other.AffectedByGravity;
+	level = other.level;
+	tileset = other.tileset;
+	lastTileCoord = other.lastTileCoord;
+	quad = other.quad;
+	if (quad != nullptr)
+	{
+		quad = new uint8_t[96 * 96];
+		memcpy(quad, other.quad, 96 * 96);
+	}
 	return *this;
 }
 
@@ -269,31 +323,289 @@ const AnimationFrame *Actor::GetFrame() const
 	return nullptr;
 }
 
-bool Actor::CheckCollision(const Player *player, const map<uint32_t, SpriteCoords> &sprites) const
+inline bool HotspotCollision(const Player *player, vec2 hotspot)
 {
 	SDL_Rect aRect, pRect;
 	int flipped = (player->GetFacing() == -1);
 	vec2 playerPos = player->GetPosition();
-	const AnimationFrame *aFrame = GetFrame();
 	const AnimationFrame *pFrame = player->GetSprite();
-	vec2 aHotspot = aFrame->getHotSpot();
 	vec2 pHotspot = pFrame->getHotSpot();
+
 	if (!flipped)
 		playerPos += vec2(pHotspot.x, pFrame->getHeight() + pHotspot.y - 20);
 	else
 		playerPos += vec2(-pHotspot.x, pFrame->getHeight() + pHotspot.y - 20);
-	
-	aRect.x = Location.x + aHotspot.x;
-	aRect.y = Location.y + aFrame->getHeight() + aHotspot.y - 12;
-	aRect.w = aFrame->getWidth();
-	aRect.h = aFrame->getHeight();	
+
 	pRect.x = playerPos.x - ((flipped) ? (pFrame->getWidth()) : 0);
 	pRect.y = playerPos.y - (float)pFrame->getHeight();
 	pRect.w = pFrame->getWidth();
 	pRect.h = pFrame->getHeight();
-	return (SDL_HasIntersection(&aRect, &pRect) == SDL_TRUE);
+	return ((hotspot.x >= pRect.x) && (hotspot.x <= (pRect.x + pRect.w))
+		&& (hotspot.y >= pRect.y) && (hotspot.y <= (pRect.y + pRect.h)));
+}
+
+bool Actor::CheckCollision(const Player *player, const map<uint32_t, SpriteCoords> &sprites) const
+{
+	const AnimationFrame *aFrame = GetFrame();
+	vec2 aHotspot = aFrame->getHotSpot();
+	return HotspotCollision(player, Location + vec2(0,32) + aHotspot);
+}
+
+inline void AdjustClipMask(uint8_t id, uint8_t *mask)
+{
+	uint8_t value = 0xFF;
+	switch (id)
+	{
+	case OneWay:
+	case Vine:
+	case Hook:
+		value = id;
+		break;
+	default:
+		break;
+	}
+	for (int i = 0; i < 1024; i++)
+	{
+		mask[i] = (mask[i]) ? value : 0x00;
+	}
+}
+
+uint8_t *Actor::GetClipOverlap()
+{
+	auto BBOX_WIDTH = 8;
+	auto BBOX_HEIGHT = 8;
+	J2L_Tile tileInfo;
+	int32_t layerWidth = level->GetLayerWidth(3);
+	int32_t layerHeight = level->GetLayerHeight(3);
+	int32_t tileXCoord = (int32_t)Math::Floor((Location.x - ((BBOX_WIDTH / 2) + 6)) / 32);	// Get the tile that contains the pixel 16 pixels to the left
+	int32_t tileYCoord = (int32_t)Math::Floor((Location.y - (BBOX_HEIGHT + 6)) / 32);	// and 16 pixels above the collision volume. This will be the upper left corner
+	int32_t tileCoord = (((int32_t)layerWidth) * tileYCoord) + tileXCoord;
+	if ((tileCoord != lastTileCoord) || (quad == nullptr))
+	{
+		if (quad != nullptr)
+			delete[] quad;
+		quad = new uint8_t[96 * 96];
+		memset(quad, 0, 96 * 96);
+
+		if ((tileXCoord > (-2)) && (tileYCoord > (-2)))
+		{
+			uint8_t *clip = nullptr;
+			if ((tileXCoord >= 0) && (tileXCoord < layerWidth) && (tileYCoord >= 0) && (tileYCoord < layerHeight))
+			{
+				tileInfo = level->GetTile(3, tileXCoord, tileYCoord, 0);
+				clip = tileset->GetClipMask(tileInfo.index, tileInfo.flipped);
+				J2L_Event event = level->GetEvents(tileXCoord, tileYCoord);
+				if (event.EventID != 0)
+				{
+					AdjustClipMask(event.EventID, clip);
+				}
+			}
+			else
+			{
+				clip = new uint8_t[1024];
+				memset(clip, 0xFF, 1024);
+			}
+			for (int i = 0; i < 32; i++)
+			{
+				memcpy(&quad[(96 * i)], &clip[32 * i], 32);
+			}
+			delete[] clip;
+			if (((tileXCoord + 1) >= 0) && ((tileXCoord + 1) < layerWidth) && (tileYCoord >= 0) && (tileYCoord < layerHeight))
+			{
+				tileInfo = level->GetTile(3, tileXCoord + 1, tileYCoord, 0);
+				clip = tileset->GetClipMask(tileInfo.index, tileInfo.flipped);
+				J2L_Event event = level->GetEvents(tileXCoord + 1, tileYCoord);
+				if (event.EventID != 0)
+				{
+					AdjustClipMask(event.EventID, clip);
+				}
+			}
+			else
+			{
+				clip = new uint8_t[1024];
+				memset(clip, 0xFF, 1024);
+			}
+			for (int i = 0; i < 32; i++)
+			{
+				memcpy(&quad[(96 * i) + 32], &clip[32 * i], 32);
+			}
+			delete[] clip;
+			if (((tileXCoord + 2) >= 0) && ((tileXCoord + 2) < layerWidth) && (tileYCoord >= 0) && (tileYCoord < layerHeight))
+			{
+				tileInfo = level->GetTile(3, tileXCoord + 2, tileYCoord, 0);
+				clip = tileset->GetClipMask(tileInfo.index, tileInfo.flipped);
+				J2L_Event event = level->GetEvents(tileXCoord + 2, tileYCoord);
+				if (event.EventID != 0)
+				{
+					AdjustClipMask(event.EventID, clip);
+				}
+			}
+			else
+			{
+				clip = new uint8_t[1024];
+				memset(clip, 0xFF, 1024);
+			}
+			for (int i = 0; i < 32; i++)
+			{
+				memcpy(&quad[(96 * i) + 64], &clip[32 * i], 32);
+			}
+			delete[] clip;
+			if ((tileXCoord >= 0) && (tileXCoord < layerWidth) && ((tileYCoord + 1) >= 0) && ((tileYCoord + 1) < layerHeight))
+			{
+				tileInfo = level->GetTile(3, tileXCoord, tileYCoord + 1, 0);
+				clip = tileset->GetClipMask(tileInfo.index, tileInfo.flipped);
+				J2L_Event event = level->GetEvents(tileXCoord, tileYCoord + 1);
+				if (event.EventID != 0)
+				{
+					AdjustClipMask(event.EventID, clip);
+				}
+			}
+			else
+			{
+				clip = new uint8_t[1024];
+				memset(clip, 0xFF, 1024);
+			}
+			for (int i = 0; i < 32; i++)
+			{
+				memcpy(&quad[(96 * (i + 32))], &clip[32 * i], 32);
+			}
+			delete[] clip;
+			if (((tileXCoord + 1) >= 0) && ((tileXCoord + 1) < layerWidth) && ((tileYCoord + 1) >= 0) && ((tileYCoord + 1) < layerHeight))
+			{
+				tileInfo = level->GetTile(3, tileXCoord + 1, tileYCoord + 1, 0);
+				clip = tileset->GetClipMask(tileInfo.index, tileInfo.flipped);
+				J2L_Event event = level->GetEvents(tileXCoord + 1, tileYCoord + 1);
+				if (event.EventID != 0)
+				{
+					AdjustClipMask(event.EventID, clip);
+				}
+			}
+			else
+			{
+				clip = new uint8_t[1024];
+				memset(clip, 0xFF, 1024);
+			}
+			for (int i = 0; i < 32; i++)
+			{
+				memcpy(&quad[(96 * (i + 32) + 32)], &clip[32 * i], 32);
+			}
+			delete[] clip;
+			if (((tileXCoord + 2) >= 0) && ((tileXCoord + 2) < layerWidth) && ((tileYCoord + 1) >= 0) && ((tileYCoord + 1) < layerHeight))
+			{
+				tileInfo = level->GetTile(3, tileXCoord + 2, tileYCoord + 1, 0);
+				clip = tileset->GetClipMask(tileInfo.index, tileInfo.flipped);
+				J2L_Event event = level->GetEvents(tileXCoord + 2, tileYCoord + 1);
+				if (event.EventID != 0)
+				{
+					AdjustClipMask(event.EventID, clip);
+				}
+			}
+			else
+			{
+				clip = new uint8_t[1024];
+				memset(clip, 0xFF, 1024);
+			}
+			for (int i = 0; i < 32; i++)
+			{
+				memcpy(&quad[(96 * (i + 32) + 64)], &clip[32 * i], 32);
+			}
+			delete[] clip;
+			if (((tileXCoord) >= 0) && ((tileXCoord) < layerWidth) && ((tileYCoord + 2) >= 0) && ((tileYCoord + 2) < layerHeight))
+			{
+				tileInfo = level->GetTile(3, tileXCoord, tileYCoord + 2, 0);
+				clip = tileset->GetClipMask(tileInfo.index, tileInfo.flipped);
+				J2L_Event event = level->GetEvents(tileXCoord, tileYCoord + 2);
+				if (event.EventID != 0)
+				{
+					AdjustClipMask(event.EventID, clip);
+				}
+			}
+			else
+			{
+				clip = new uint8_t[1024];
+				memset(clip, 0xFF, 1024);
+			}
+			for (int i = 0; i < 32; i++)
+			{
+				memcpy(&quad[(96 * (i + 64))], &clip[32 * i], 32);
+			}
+			delete[] clip;
+			if (((tileXCoord + 1) >= 0) && ((tileXCoord + 1) < layerWidth) && ((tileYCoord + 2) >= 0) && ((tileYCoord + 2) < layerHeight))
+			{
+				tileInfo = level->GetTile(3, tileXCoord + 1, tileYCoord + 2, 0);
+				clip = tileset->GetClipMask(tileInfo.index, tileInfo.flipped);
+				J2L_Event event = level->GetEvents(tileXCoord + 1, tileYCoord + 2);
+				if (event.EventID != 0)
+				{
+					AdjustClipMask(event.EventID, clip);
+				}
+			}
+			else
+			{
+				clip = new uint8_t[1024];
+				memset(clip, 0xFF, 1024);
+			}
+			for (int i = 0; i < 32; i++)
+			{
+				memcpy(&quad[(96 * (i + 64) + 32)], &clip[32 * i], 32);
+			}
+			delete[] clip;
+			if (((tileXCoord + 2) >= 0) && ((tileXCoord + 2) < layerWidth) && ((tileYCoord + 2) >= 0) && ((tileYCoord + 2) < layerHeight))
+			{
+				tileInfo = level->GetTile(3, tileXCoord + 2, tileYCoord + 2, 0);
+				clip = tileset->GetClipMask(tileInfo.index, tileInfo.flipped);
+				J2L_Event event = level->GetEvents(tileXCoord + 2, tileYCoord + 2);
+				if (event.EventID != 0)
+				{
+					AdjustClipMask(event.EventID, clip);
+				}
+			}
+			else
+			{
+				clip = new uint8_t[1024];
+				memset(clip, 0xFF, 1024);
+			}
+			for (int i = 0; i < 32; i++)
+			{
+				memcpy(&quad[(96 * (i + 64) + 64)], &clip[32 * i], 32);
+			}
+			delete[] clip;
+		}
+	}
+
+	uint8_t *overlap = new uint8_t[(BBOX_WIDTH + 12) * (BBOX_HEIGHT + 12)];
+	int xOffset = (int)Math::Round(Location.x - ((BBOX_WIDTH / 2) + 6)) - (32 * tileXCoord);
+	int yOffset = (int)Math::Round(Location.y - (BBOX_HEIGHT + 6)) - (32 * tileYCoord);
+	for (int i = 0; i < (BBOX_HEIGHT + 12); i++)
+	{
+		memcpy(&overlap[(BBOX_WIDTH + 12) * i], &quad[96 * (i + yOffset) + xOffset], (BBOX_WIDTH + 12));
+	}
+
+	return overlap;
+}
+
+bool Actor::CheckCollision()
+{
+	bool colliding = false;
+	auto clipMask = GetClipOverlap();
+
+	// Determine if we're clipping with the level
+
+	for (int i = 0; i < 1024; i++)
+	{
+		if (clipMask[i] == 0xFF)
+			colliding = true;
+	}
+
+	delete[] clipMask;
+	return colliding;
 }
 
 Actor::~Actor()
 {
+	if (quad != nullptr)
+	{
+		delete[] quad;
+		quad = nullptr;
+	}
 }
