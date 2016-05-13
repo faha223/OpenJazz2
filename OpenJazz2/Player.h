@@ -33,6 +33,7 @@
 #define ButtstompVelocity 1024.0f 	// Needs Tweaked
 #define HPoleExitSpeed 1024.0f 		// Needs Tweaked
 #define InvincibilityDuration 2.0f	// Needs Tweaked
+#define ShootIdleTime 1.5f			// Needs Tweaked
 
 enum PlayerState
 {
@@ -57,6 +58,7 @@ enum PlayerState
 	ENDING_HIGHJUMP,
 	ASCENDING,
 	DESCENDING,
+	DESCENDING_GUN,
 	COPTER,
 	HANGING,
 	HANGING_IDLE,
@@ -64,6 +66,8 @@ enum PlayerState
 	PREPARING_BUTTSTOMP,
 	BUTTSTOMP,
 	ENDING_BUTTSTOMP,
+	SUCKERTUBE,
+	SHOOTING,
 	DYING,
 	DEAD, 
 	CROUCHING, 

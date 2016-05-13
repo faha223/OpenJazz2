@@ -10,75 +10,80 @@ static int32_t nextOffsetPoint = 0;
 
 Actor::Actor(const vec2 &location, const EventID &eventId, const Animations *anims, const float &TTL) : eventId(eventId), Location(location), anim(nullptr), TTL(TTL), Age(0), DoesNotFloat(false), SpeedModifier(1.0f)
 {
-	const AnimationSet *animSet = anims->GetAnimSet(ANIM_SET_ITEMS);
+	const AnimationSet *items = anims->GetAnimSet(ANIM_SET_ITEMS);
+	const AnimationSet *springs = anims->GetAnimSet(ANIM_SET_SPRINGS);
 	switch (eventId)
 	{
 	case None:
 		return;
 	case Apple:
-		anim = animSet->GetAnim(ANIM_APPLE);
+		anim = items->GetAnim(ANIM_APPLE);
 		break;
 	case Milk:
-		anim = animSet->GetAnim(ANIM_MILK);
+		anim = items->GetAnim(ANIM_MILK);
 		break;
 	case Pear:
-		anim = animSet->GetAnim(ANIM_PEAR);
+		anim = items->GetAnim(ANIM_PEAR);
 		break;
 	case CarrotEnergyPlus1:
-		anim = animSet->GetAnim(ANIM_CARROT);
+		anim = items->GetAnim(ANIM_CARROT);
 		break;
 	case GoldCoin:
-		anim = animSet->GetAnim(ANIM_GOLD_COIN);
+		anim = items->GetAnim(ANIM_GOLD_COIN);
 		SpeedModifier = -2.0f;
 		break;
 	case SilverCoin:
-		anim = animSet->GetAnim(ANIM_SILVER_COIN);
+		anim = items->GetAnim(ANIM_SILVER_COIN);
 		SpeedModifier = -2.0f;
 		break;
 	case Cake:
-		anim = animSet->GetAnim(ANIM_CAKE);
+		anim = items->GetAnim(ANIM_CAKE);
 		break;
 	case Cupcake:
-		anim = animSet->GetAnim(ANIM_CUPCAKE);
+		anim = items->GetAnim(ANIM_CUPCAKE);
 		break;
 	case Candy:
-		anim = animSet->GetAnim(ANIM_CANDY);
+		anim = items->GetAnim(ANIM_CANDY);
 		break;
 	case Chocbar:
-		anim = animSet->GetAnim(ANIM_CHOCOLATE);
+		anim = items->GetAnim(ANIM_CHOCOLATE);
 		break;
 	case ChickenLeg:
-		anim = animSet->GetAnim(ANIM_CHICKEN);
+		anim = items->GetAnim(ANIM_CHICKEN);
 		break;
 	case RedGemPlus1:
 	case PurpleGemPlus1:
 	case BlueGemPlus1:
 	case GreenGemPlus1:
-		anim = animSet->GetAnim(ANIM_GEM);
+		anim = items->GetAnim(ANIM_GEM);
 		SpeedModifier = -2.0f;
 		break;
 	case Donut:
-		anim = animSet->GetAnim(ANIM_DONUT);
+		anim = items->GetAnim(ANIM_DONUT);
 		break;
 	case GemCrate:
-		anim = animSet->GetAnim(ANIM_CRATE);
+		anim = items->GetAnim(ANIM_CRATE);
 		DoesNotFloat = true;
 		break;
 	case ExtraLive:
-		anim = animSet->GetAnim(ANIM_1UP);
+		anim = items->GetAnim(ANIM_1UP);
 		break;
 	case Lettuce:
-		anim = animSet->GetAnim(ANIM_LETTUCE);
+		anim = items->GetAnim(ANIM_LETTUCE);
 		break;
 	case Watermelon:
-		anim = animSet->GetAnim(ANIM_WATERMELON);
+		anim = items->GetAnim(ANIM_WATERMELON);
 		break;
 	case Peach:
-		anim = animSet->GetAnim(ANIM_PEACH);
+		anim = items->GetAnim(ANIM_PEACH);
 		break;
 	case Sparkle:
-		anim = animSet->GetAnim(ANIM_SPARKLE);
+		anim = items->GetAnim(ANIM_SPARKLE);
 		this->TTL = anim->GetFrameCount() / (float)anim->GetFrameRate();
+		DoesNotFloat = true;
+		break;
+	case RedSpring:
+		anim = springs->GetAnim(ANIM_SPRING_UP_RED);
 		DoesNotFloat = true;
 		break;
 	}

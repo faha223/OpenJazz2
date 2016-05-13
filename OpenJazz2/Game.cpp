@@ -445,7 +445,7 @@ void Game::RestartLevel()
 		for (uint32_t j = 0; j < level->GetLayerWidth(3); j++)
 		{
 			uint32_t tc = (level->GetLayerWidth(3)*i + j);
-			Events.push_back(Event(level->GetEvents(j, i), tc));
+			Events.push_back(Event(level->GetEvents(j, i)));
 			EventID eventId = (EventID)level->GetEvents(j, i).EventID;
 			if (eventId != EventID::None)
 			{

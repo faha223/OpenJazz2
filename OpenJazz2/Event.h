@@ -6,8 +6,12 @@
 #include <string>
 #include <vector>
 
-struct Parameter
+class Parameter
 {
+public:
+	Parameter();
+	Parameter(const Parameter &p);
+	Parameter(const std::string &name, const int32_t &value);
 	std::string Name;
 	int32_t Value;
 };
@@ -23,7 +27,6 @@ class Event
 {
 private:
 	EventID id;
-	uint32_t TileCoord;
 	uint32_t SpriteId;
 	Difficulty difficulty;
 	bool Illuminate;
@@ -31,11 +34,11 @@ private:
 	Difficulty diff;
 	std::vector<Parameter> params;
 public:	
-	Event(const J2L_Event &event, const uint32_t &TileCoord);
-	uint32_t GetTileXCoord() const;
-	uint32_t GetTileYCoord() const;
-	uint32_t GetSprite(const Animations *anims) const;
-	void Activate();
+	Event(const J2L_Event &event);
+	const Animation *GetSprite(const Animations *anims) const;
+	bool IsActive() const;
+	float GetXVelocity() const;
+	float GetYVelocity() const;
 };
 
 #endif

@@ -1,4 +1,5 @@
 #include "Player.h"
+#include "Event.h"
 #include <cstdlib>
 //#define SAVE_QUAD
 #ifdef SAVE_QUAD
@@ -91,6 +92,9 @@ const AnimationFrame *Player::GetSprite() const
 		case DESCENDING:
 			CurrentAnim = (abs(Velocity.x) > 20) ? ANIM_JAZZ_DESC_SIDE : ANIM_JAZZ_DESC_1;
 			break;
+		case DESCENDING_GUN:
+			CurrentAnim = ANIM_JAZZ_DESC_GUN;
+			break;
 		case STARTING_SKID:
 			CurrentAnim = ANIM_JAZZ_STARTING_SKID;
 			break;
@@ -180,6 +184,8 @@ const AnimationFrame *Player::GetSprite() const
 			break;
 		case BALL:
 			CurrentAnim = ANIM_JAZZ_BALL;
+			break;
+		case SHOOTING:
 			break;
 		case HURT:
 			CurrentAnim = ANIM_JAZZ_HURT;
@@ -830,6 +836,9 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 		}
 		break;
 	case DESCENDING:
+	case DESCENDING_GUN:
+		if (state == DESCENDING_GUN && !Controls[SHOOT] && timeSinceStateChanged > ShootIdleTime)
+			SetState(DESCENDING);
 		if ((coll.iBottomCenter <= 0) || (coll.iBottomLeft <= 0) || (coll.iBottomRight <= 0))
 		{
 			grounded = true;
@@ -846,7 +855,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 		}
 		else
 		{
-			if(coll.CollisionState == Vine)
+			if((coll.CollisionState == Vine) || (coll.CollisionState == Hook))
 			{
 				grounded = true;
 				Velocity.y = 0;
@@ -862,6 +871,10 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 				else
 				{
 					Velocity.x = (1.0f - AirControl) * Velocity.x;
+				}
+				if (Controls[SHOOT] && !PrevControls[SHOOT])
+				{
+					SetState(DESCENDING_GUN);
 				}
 				if (Controls[JUMP] && !PrevControls[JUMP])
 				{
@@ -924,12 +937,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 	case HANGING_IDLE:
 	case HANGING:
 		Velocity.y = 0;
-		if(coll.CollisionState != Vine)
-		{
-			SetState(DESCENDING);
-			grounded = false;
-		}
-		else
+		if ((coll.CollisionState == Vine) || (coll.CollisionState == Hook))
 		{
 			if(coll.iTop < 10)
 				Position.y += (-4 - coll.iTop);
@@ -966,6 +974,10 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 				}
 			}
 		}
+		else
+		{
+
+		}
 		break;
 	case HANGING_MOVING:
 		Velocity.y = 0;
@@ -997,7 +1009,6 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 				Facing = (Controls[LEFT]) ? -1 : 1;
 				float swingMag = ((Controls[RUN] ? MaxFastHangingMoveSpeed : MaxHangingMoveSpeed) - MinHangingMoveSpeed);
 				Velocity.x = Facing * ((0.5f * swingMag * Math::Sin(HangingMoveSpeedPeriod * timeSinceStateChanged + HangingMoveSpeedPeriodOffset)) + (0.5f * swingMag) + MinHangingMoveSpeed);
-				//printf("Setting Velocity.x to %0.2f\n", Velocity.x);
 			}
 			else
 			{
@@ -1069,6 +1080,10 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 			SetState(DEAD);
 		}
 		break;
+	case SUCKERTUBE:
+		if (event.EventID != SuckerTube)
+			SetState(BALL);
+		break;
 	case DEAD:
 		break;
 	}
@@ -1094,6 +1109,34 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 		else
 		{
 			SetState(DYING);
+		}
+	}
+	if (event.EventID == SuckerTube)
+	{
+		Event e = Event(event);
+		if (e.IsActive())
+		{
+			float XVelocity = e.GetXVelocity();
+			float YVelocity = e.GetYVelocity();
+			if (XVelocity != 0)
+			{
+				auto posy = (TileYCoord + 1) * 32;
+				{
+					Position.y = posy;
+					Velocity = vec2(XVelocity, YVelocity);
+					SetState(BALL);
+				}
+			}
+			else if (YVelocity != 0)
+			{
+				auto posx = ((TileXCoord + 1) * 32) - 16;
+				if ((posx - Position.x) * (posx - (Position.x + (Velocity.x * dt))) <= 0)
+				{
+					Position.x = posx;
+					Velocity = vec2(XVelocity, YVelocity);
+					SetState(BALL);
+				}
+			}
 		}
 	}
 	if(event.EventID == AreaEndOfLevel)
@@ -1401,6 +1444,17 @@ uint8_t *Player::GetClipOverlap()
 	return overlap;
 }
 
+template<typename T>
+bool contains(vector<T> collection, T item)
+{
+	for (auto it = collection.begin(); it != collection.end(); it++)
+	{
+		if ((*it) == item)
+			return true;
+	}
+	return false;
+}
+
 CollisionInfo Player::CheckCollision(const vec2 &PreviousPosition)
 {
 	CollisionInfo coll;
@@ -1439,10 +1493,12 @@ CollisionInfo Player::CheckCollision(const vec2 &PreviousPosition)
 	
 	if (clip != nullptr)
 	{
+		// Check for collision to the top coords
 		for (int i = 6; i > -6 ; i--)
 		{
 			uint32_t coord1 = (BBOX_WIDTH + 12) * (6 - i) + 9;
 			uint32_t coord2 = ((BBOX_WIDTH + 12) * (6 - i)) + (BBOX_WIDTH + 3);
+			
 			if (((clip[coord1] == 0xFF) || (clip[coord2] == 0xFF)) && !clipTopReached)
 			{
 				coll.iTop = i;
@@ -1458,6 +1514,7 @@ CollisionInfo Player::CheckCollision(const vec2 &PreviousPosition)
 				}
 			}
 		}
+		// Check for collision to the bottom left coord
 		for (int i = 6; i > -6; i--)
 		{
 			uint32_t coord1 = (BBOX_WIDTH+12) * ((BBOX_HEIGHT+11) - (6-i)) + 9;
@@ -1470,6 +1527,7 @@ CollisionInfo Player::CheckCollision(const vec2 &PreviousPosition)
 			if ((clip[coord3] == 0xFF) || ((clip[coord1] == OneWay) && (((Position.y - PreviousPosition.y) + i) >= 0)))
 				coll.iBottomRight = i;
 		}
+		// Check for collision to the bottom right coord
 		for (int i = 6; i > -6; i--)
 		{
 			uint32_t coord1 = ((BBOX_WIDTH + 12) * 20) + (6 - i);

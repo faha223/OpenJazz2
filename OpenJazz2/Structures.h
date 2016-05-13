@@ -510,6 +510,7 @@ struct J2L_Data1_AGA
 	uint8_t Padding[512]; //all zeroes; only in levels saved with JCS
 };
 
+#pragma pack(1)
 struct J2L_Event
 {
 	uint8_t EventID;
