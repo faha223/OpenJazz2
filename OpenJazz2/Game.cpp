@@ -590,11 +590,28 @@ void Game::Run()
 							vec2 position = actor->GetPosition();
 							vertex actorVerts[4];
 
+							bool isFlippedX = false;
+							bool isFlippedY = false;
+							if (actor->IsFlipped())
+							{
+								switch (actor->GetEventID())
+								{
+								case RedSpring:
+								case GreenSpring:
+								case BlueSpring:
+									isFlippedY = true;
+									break;
+								case HorRedSpring:
+								case HorGreenSpring:
+								case HorBlueSpring:
+									isFlippedX = true;
+									break;
+								}
+							}
+
 							if (actor->RenderFromColdSpot())
 							{
 								vec2 Coldspot = frame->getColdSpot();
-								while ((int)position.y % 32 > 0)
-									position.y = ((int)position.y) + 1;
 								position += vec2(0, 32);
 								position += vec2(Coldspot.x, Coldspot.y);
 							}
@@ -603,29 +620,33 @@ void Game::Run()
 								vec2 Hotspot = frame->getHotSpot();
 								position += vec2(Hotspot.x, Hotspot.y);
 							}
+							//if (isFlippedY)
+							//	/*position.y = position.y - 32 + coords.height;*/
+							if (isFlippedX)
+								position.x += 32 - coords.width;
 
 							actorVerts[0].x = position.x;
 							actorVerts[0].y = position.y;
 							actorVerts[0].z = depth;
-							actorVerts[0].s = (((float)coords.x)/(float)SPRITESHEET_SIZE);
-							actorVerts[0].t = (((float)(coords.y))/(float)SPRITESHEET_SIZE);
+							actorVerts[0].s = isFlippedX ? (((float)coords.x + coords.width) / (float)SPRITESHEET_SIZE) : (((float)coords.x)/(float)SPRITESHEET_SIZE);
+							actorVerts[0].t = (((float)coords.y)/(float)SPRITESHEET_SIZE);
 
 							actorVerts[1].x = position.x;
 							actorVerts[1].y = position.y + coords.height;
 							actorVerts[1].z = depth;
-							actorVerts[1].s = (((float)(coords.x))/(float)SPRITESHEET_SIZE);
+							actorVerts[1].s = isFlippedX ? (((float)(coords.x + coords.width)) / (float)SPRITESHEET_SIZE) : (((float)(coords.x))/(float)SPRITESHEET_SIZE);
 							actorVerts[1].t = (((float)coords.y + coords.height) / (float)SPRITESHEET_SIZE);
 
 							actorVerts[2].x = position.x + (coords.width);
 							actorVerts[2].y = position.y + coords.height;
 							actorVerts[2].z = depth;
-							actorVerts[2].s = (((float)(coords.x + coords.width))/(float)SPRITESHEET_SIZE);
+							actorVerts[2].s = isFlippedX ? (((float)(coords.x)) / (float)SPRITESHEET_SIZE) : (((float)(coords.x + coords.width))/(float)SPRITESHEET_SIZE);
 							actorVerts[2].t = (((float)coords.y + coords.height) / (float)SPRITESHEET_SIZE);
 
 							actorVerts[3].x = position.x + (coords.width);
 							actorVerts[3].y = position.y;
 							actorVerts[3].z = depth;
-							actorVerts[3].s = (((float)coords.x + coords.width)/(float)SPRITESHEET_SIZE);
+							actorVerts[3].s = isFlippedX ? (((float)coords.x) / (float)SPRITESHEET_SIZE) : (((float)coords.x + coords.width)/(float)SPRITESHEET_SIZE);
 							actorVerts[3].t = (((float)(coords.y))/(float)SPRITESHEET_SIZE);
 
 							actor->Update(max(1.0f / 60.0f, sinceLastUpdate));

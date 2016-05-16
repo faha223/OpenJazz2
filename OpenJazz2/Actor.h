@@ -10,6 +10,13 @@ class Level;
 class Tileset;
 class Player;
 
+enum ActorState
+{
+	Still,
+	PlayOnce,
+	Looping
+};
+
 class Actor
 {
 private:
@@ -29,6 +36,12 @@ private:
 	uint8_t *GetClipOverlap();
 	uint32_t lastTileCoord;
 	uint8_t *quad;
+	bool animateOnCollision;
+	ActorState state;
+	float timeSinceStateChanged;
+	bool isFlipped;
+
+	void SetState(const ActorState &newState);
 public:
 	Actor(const Level *level, const Tileset *tileset, const vec2 &location, const EventID &EventID, const Animations *anims, const float &TTL);
 	Actor(const Actor &other);
@@ -46,9 +59,10 @@ public:
 	uint8_t GetLivesAdd() const;
 	uint16_t GetPointValue() const;
 	bool IsFlipped() const;
+	bool IsAnimationEnded() const;
 	bool AddsSparkleOnDeath() const;
 	bool RenderFromColdSpot() const;
-	bool CheckCollision(const Player *player, const std::map<uint32_t, SpriteCoords> &sprites) const;
+	bool CheckCollision(const Player *player, const std::map<uint32_t, SpriteCoords> &sprites);
 	bool CheckCollision();
 	~Actor();
 };

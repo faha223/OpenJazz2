@@ -3,6 +3,8 @@
 
 #include "Structures.h"
 
+class Tileset;
+
 struct J2L_Tile
 {
 	int32_t index;
@@ -60,6 +62,7 @@ public:
 	bool IsLayerLimitedToVisibleRegion(const uint32_t &layer) const;
 	void SetTileFrame(const uint32_t &tilecoord, const uint8_t &newVal);	// This allows the user to destroy destructible tiles
 	J2L_Event GetEvents(const uint32_t &tileXCoord, const uint32_t &tileYCoord) const;
+	bool IsWalkable(const uint32_t &tileXCoord, const uint32_t &tileYCoord, const Tileset *tileset) const;
 
 	//void DumpLayerTilesRaw(const uint32_t &layer, const char *filename) const;
 	~Level();

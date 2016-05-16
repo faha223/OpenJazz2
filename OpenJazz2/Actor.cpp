@@ -27,10 +27,16 @@ Actor::Actor(const Level *level, const Tileset *tileset, const vec2 &location, c
 	level(level),
 	tileset(tileset),
 	lastTileCoord(0),
-	quad(nullptr)
+	quad(nullptr),
+	animateOnCollision(false),
+	state(Looping),
+	timeSinceStateChanged(0),
+	isFlipped(false)
 {
 	const AnimationSet *items = anims->GetAnimSet(ANIM_SET_ITEMS);
 	const AnimationSet *springs = anims->GetAnimSet(ANIM_SET_SPRINGS);
+	uint32_t tileXCoord = (uint32_t)(location.x / 32);
+	uint32_t tileYCoord = (uint32_t)(location.y / 32);
 	switch (eventId)
 	{
 	case None:
@@ -83,6 +89,7 @@ Actor::Actor(const Level *level, const Tileset *tileset, const vec2 &location, c
 	case GemCrate:
 		anim = items->GetAnim(ANIM_CRATE);
 		DoesNotFloat = true;
+		state = Still;
 		break;
 	case ExtraLive:
 		anim = items->GetAnim(ANIM_1UP);
@@ -102,28 +109,46 @@ Actor::Actor(const Level *level, const Tileset *tileset, const vec2 &location, c
 		DoesNotFloat = true;
 		break;
 	case RedSpring:
-		anim = springs->GetAnim(ANIM_SPRING_UP_RED);
+		isFlipped = level->IsWalkable(tileXCoord, tileYCoord + 1, tileset);
+		anim = springs->GetAnim(isFlipped ? ANIM_SPRING_DN_RED : ANIM_SPRING_UP_RED);
 		DoesNotFloat = true;
+		animateOnCollision = true;
+		state = Still;
 		break;
 	case GreenSpring:
-		anim = springs->GetAnim(ANIM_SPRING_UP_GREEN);
+		isFlipped = level->IsWalkable(tileXCoord, tileYCoord + 1, tileset);
+		anim = springs->GetAnim(isFlipped ? ANIM_SPRING_DN_GREEN : ANIM_SPRING_UP_GREEN);
 		DoesNotFloat = true;
+		animateOnCollision = true;
+		state = Still;
 		break;
 	case BlueSpring:
-		anim = springs->GetAnim(ANIM_SPRING_UP_GREEN);
+		isFlipped = level->IsWalkable(tileXCoord, tileYCoord + 1, tileset);
+		anim = springs->GetAnim(isFlipped ? ANIM_SPRING_DN_BLUE : ANIM_SPRING_UP_BLUE);
 		DoesNotFloat = true;
+		animateOnCollision = true;
+		state = Still;
 		break;
 	case HorRedSpring:
 		anim = springs->GetAnim(ANIM_SPRING_RT_RED);
 		DoesNotFloat = true;
+		animateOnCollision = true;
+		state = Still;
+		isFlipped = level->IsWalkable(tileXCoord - 1, tileYCoord, tileset);
 		break;
 	case HorGreenSpring:
 		anim = springs->GetAnim(ANIM_SPRING_RT_GREEN);
 		DoesNotFloat = true;
+		animateOnCollision = true;
+		state = Still;
+		isFlipped = level->IsWalkable(tileXCoord - 1, tileYCoord, tileset);
 		break;
 	case HorBlueSpring:
 		anim = springs->GetAnim(ANIM_SPRING_RT_BLUE);
 		DoesNotFloat = true;
+		animateOnCollision = true;
+		state = Still;
+		isFlipped = level->IsWalkable(tileXCoord - 1, tileYCoord, tileset);
 		break;
 	}
 	PeriodInitialOffset = (nextOffsetPoint++) * (ActorFloatingPeriod / 4.0f);
@@ -143,7 +168,11 @@ Actor::Actor(const Actor &other) :
 	level(other.level),
 	tileset(other.tileset),
 	lastTileCoord(other.lastTileCoord),
-	quad(other.quad)
+	quad(other.quad),
+	animateOnCollision(other.animateOnCollision),
+	state(other.state),
+	timeSinceStateChanged(other.timeSinceStateChanged),
+	isFlipped(other.isFlipped)
 {
 	if (quad != nullptr)
 	{
@@ -168,6 +197,11 @@ Actor Actor::operator =(const Actor &other)
 	tileset = other.tileset;
 	lastTileCoord = other.lastTileCoord;
 	quad = other.quad;
+	animateOnCollision = other.animateOnCollision;
+	state = other.state;
+	timeSinceStateChanged = other.timeSinceStateChanged;
+	isFlipped = other.isFlipped;
+
 	if (quad != nullptr)
 	{
 		quad = new uint8_t[96 * 96];
@@ -179,6 +213,24 @@ Actor Actor::operator =(const Actor &other)
 void Actor::Update(const float &timeElapsed)
 {
 	Age += timeElapsed;
+	timeSinceStateChanged += timeElapsed;
+	if ((state == PlayOnce) && (IsAnimationEnded()))
+		SetState(Still);
+}
+
+bool Actor::IsAnimationEnded() const
+{
+	if (state == PlayOnce)
+	{
+		return (timeSinceStateChanged > ((anim->GetFrameCount() / anim->GetFrameRate()) / abs(this->SpeedModifier)));
+	}
+	return false;
+}
+
+void Actor::SetState(const ActorState &newState)
+{
+	state = newState;
+	timeSinceStateChanged = 0;
 }
 
 vec2 Actor::GetPosition() const
@@ -266,19 +318,7 @@ GemType Actor::GetGemType() const
 
 bool Actor::IsFlipped() const
 {
-	switch (eventId)
-	{
-	case RedSpring:
-	case GreenSpring:
-	case BlueSpring:
-		return false;
-	case HorRedSpring:
-	case HorGreenSpring:
-	case HorBlueSpring:
-		return false;
-	default:
-		return false;
-	}
+	return isFlipped;
 }
 
 uint16_t Actor::GetPointValue() const
@@ -349,7 +389,13 @@ const AnimationFrame *Actor::GetFrame() const
 		uint32_t frameCount = anim->GetFrameCount();
 		uint32_t frameRate = anim->GetFrameRate();
 		int frame = ((int)Math::Floor(Age * frameRate * SpeedModifier)) % frameCount;
-		return anim->GetFrame(max(0, min(frameCount, frame)));
+		switch (state)
+		{
+		case Still:
+			return anim->GetFrame(0);
+		default:
+			return anim->GetFrame(max(0, min(frameCount, frame)));
+		}
 	}
 	return nullptr;
 }
@@ -385,15 +431,45 @@ inline bool HotspotCollision(const Player *player, vec2 hotspot)
 		&& (hotspot.y >= pRect.y) && (hotspot.y <= (pRect.y + pRect.h)));
 }
 
-bool Actor::CheckCollision(const Player *player, const map<uint32_t, SpriteCoords> &sprites) const
+bool Actor::CheckCollision(const Player *player, const map<uint32_t, SpriteCoords> &sprites)
 {
 	const AnimationFrame *aFrame = GetFrame();
 	vec2 hotspot = GetPosition();
 	if (RenderFromColdSpot())
 	{
-		hotspot = GetPosition() + vec2(0,16) + aFrame->getHotSpot() - aFrame->getColdSpot();
+		vec2 origin = vec2(0, 16);
+		hotspot = aFrame->getHotSpot() - aFrame->getColdSpot();
+		switch (eventId)
+		{
+		case RedSpring:
+		case GreenSpring:
+		case BlueSpring:
+			if (isFlipped)
+			{
+				hotspot = -1.0f * hotspot;
+			}
+			break;
+		case HorRedSpring:
+		case HorGreenSpring:
+		case HorBlueSpring:
+			origin = vec2(-16, 0);
+			if (isFlipped)
+			{
+				hotspot = -1.0f * hotspot;
+				origin = vec2(16, 0);
+			}
+			break;
+		}
+		hotspot = GetPosition() + origin + hotspot;
 	}
-	return HotspotCollision(player, hotspot);
+	bool colliding = HotspotCollision(player, hotspot);
+	if (colliding)
+	{
+		// Logic when colliding with Player
+		if (animateOnCollision)
+ 			SetState(PlayOnce);
+	}
+	return colliding;
 }
 
 inline void AdjustClipMask(uint8_t id, uint8_t *mask)

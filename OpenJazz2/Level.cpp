@@ -1,4 +1,5 @@
 #include "Level.h"
+#include "Tileset.h"
 #include "FileIO.h"
 #include "Math.h"
 
@@ -99,6 +100,66 @@ Data4_1_23(nullptr)
 	{
 		Data2_AGA = new J2L_Data2_AGA(*other.Data2_AGA);
 	}
+}
+
+Level Level::operator = (const Level &other)
+{
+	if (Data1_1_23 != nullptr)
+		delete Data1_1_23;
+	Data1_1_23 = nullptr;
+
+	if (Data1_TSF != nullptr)
+		delete Data1_TSF;
+	Data1_TSF = nullptr;
+
+	if (Data1_AGA != nullptr)
+		delete Data1_AGA;
+	Data1_AGA = nullptr;
+
+	if (Data2_1_23 != nullptr)
+		delete Data2_1_23;
+	Data2_1_23 = nullptr;
+
+	if (Data2_AGA != nullptr)
+		delete Data2_AGA;
+	Data2_AGA = nullptr;
+
+	if (Data3_1_23 != nullptr)
+		delete Data3_1_23;
+	Data3_1_23 = nullptr;
+
+	if (Data4_1_23 != nullptr)
+		delete Data4_1_23;
+	Data4_1_23 = nullptr;
+
+	memcpy(&header, &other.header, sizeof(LEVL_Header));
+
+	if (other.Data1_1_23 != nullptr)
+	{
+		Data1_1_23 = new J2L_Data1_1_23();
+		memcpy(Data1_1_23, other.Data1_1_23, sizeof(J2L_Data1_1_23));
+	}
+	else if (other.Data1_TSF != nullptr)
+	{
+		Data1_TSF = new J2L_Data1_TSF();
+		memcpy(Data1_TSF, other.Data1_TSF, sizeof(J2L_Data1_TSF));
+	}
+	else if (other.Data1_AGA != nullptr)
+	{
+		Data1_AGA = new J2L_Data1_AGA();
+		memcpy(Data1_AGA, other.Data1_AGA, sizeof(J2L_Data1_AGA));
+	}
+
+	if (other.Data2_1_23 != nullptr)
+	{
+		Data2_1_23 = new J2L_Data2_1_23(*other.Data2_1_23);
+	}
+	else if (other.Data2_AGA != nullptr)
+	{
+		Data2_AGA = new J2L_Data2_AGA(*other.Data2_AGA);
+	}
+
+	return *this;
 }
 
 void Level::LoadData1(uint8_t *Data1)
@@ -423,6 +484,18 @@ J2L_Tile Level::GetTile(const uint32_t &layer, const uint32_t &tileXCoord, const
 		}
 	}
 	return tile;
+}
+
+bool Level::IsWalkable(const uint32_t &tileXCoord, const uint32_t &tileYCoord, const Tileset *tileset) const
+{
+	/*return false;*/
+	auto tile = GetTile(3, tileXCoord, tileYCoord, 0);
+	uint8_t *clipmask = tileset->GetClipMask(tile.index, tile.flipped);
+	// If any of the bits in the mask are 1, this space is not walkable
+	for (auto i = 0; i < 1024; i++)
+		if (clipmask[i])
+			return false;
+	return true;
 }
 
 void Level::SetTileFrame(const uint32_t &tile, const uint8_t &newVal)

@@ -1618,6 +1618,8 @@ bool Player::CollidedWithActor(const Actor &actor)
 	}
 	if (actor.GetEventID() == RedSpring)
 	{
+		Position.x = actor.GetPosition().x;
+		Velocity.x = 0;
 		Velocity.y = RedSpringJumpSpeed;
 		SetState(HIGHJUMP);
 		grounded = false;
@@ -1625,6 +1627,8 @@ bool Player::CollidedWithActor(const Actor &actor)
 	}
 	else if (actor.GetEventID() == GreenSpring)
 	{
+		Position.x = actor.GetPosition().x;
+		Velocity.x = 0;
 		Velocity.y = GreenSpringJumpSpeed;
 		SetState(HIGHJUMP);
 		grounded = false;
@@ -1632,6 +1636,8 @@ bool Player::CollidedWithActor(const Actor &actor)
 	}
 	else if (actor.GetEventID() == BlueSpring)
 	{
+		Position.x = actor.GetPosition().x;
+		Velocity.x = 0;
 		Velocity.y = BlueSpringJumpSpeed;
 		SetState(HIGHJUMP);
 		grounded = false;
