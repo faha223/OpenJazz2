@@ -40,7 +40,8 @@ GreenGems(0),
 BlueGems(0),
 PurpleGems(0),
 Invincible(true), 
-TimeSinceMadeInvincible(0)
+TimeSinceMadeInvincible(0),
+SpringInfluenced(false)
 { }
 
 void Player::InitLives(const uint32_t lives)
@@ -384,17 +385,46 @@ void Player::SetState(const PlayerState &newState)
 	//printf("Setting State to %i\n", newState);
 	state = newState;
 	timeSinceStateChanged = 0;
+	switch (state)
+	{
+	case RUNNING:
+	case JUMPING:
+	case HIGHJUMP:
+	case DESCENDING:
+		break;
+	default:
+		SpringInfluenced = false;
+		break;
+	}
+}
+
+void Player::SetSpringInfluenced(const float &timeout)
+{
+	SpringInfluenced = true;
+	timeSinceSpringInfluenced = 0;
+	springInfluenceTimeout = timeout;
 }
 
 void Player::Update(const float &dt, map<Control, bool> Controls)
 {
 	timeSinceStateChanged += dt;
+
+#pragma region Update SpringInfluence Values
+
+	timeSinceSpringInfluenced += dt;
+	if (timeSinceSpringInfluenced > springInfluenceTimeout)
+		SpringInfluenced = false;
+
+#pragma endregion Update SpringInfluence Values
+
 	float rate = 6.0f;
+	float origVelocityY = Velocity.y;
 	for (int i = 0; i < (int)rate; i++)
 	{
 		vec2 oldPos = Position;
 		vec2 newPos = Position + (Velocity * (dt / rate));
 		//printf("Velocity = (%0.2f, %0.2f)\n", Velocity.x, Velocity.y);
+		
 		if(!grounded)
 		{
 			Velocity += vec2(0, (dt/rate)*((Velocity.y >= 0.0f) ? FallingGravity : Gravity));
@@ -568,12 +598,18 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 	case HIGHJUMP:
 		if (TileYCoord > 0)
 		{
-			if (level->GetEvents(TileXCoord, TileYCoord + 1).EventID == ButtStompScenery)
+			auto tileEvent = level->GetEvents(TileXCoord, TileYCoord + 1);
+			if((tileEvent.EventID == ButtStompScenery) || (tileEvent.EventID == DestructScenery))
 			{
 				coll.iTop = INT_MAX;
+				Velocity.y = origVelocityY;
 			}
 		}
-		if((!Controls[JUMP]) || (Velocity.y >= 0) || (timeSinceStateChanged >= HighJumpDuration))
+		if (SpringInfluenced && (springInfluenceTimeout > timeSinceSpringInfluenced))
+		{
+			Velocity.y = origVelocityY;
+		}
+		else if((!Controls[JUMP]) || (Velocity.y >= 0) || (timeSinceStateChanged >= HighJumpDuration))
 		{
 			SetState(JUMPING);
 			timeSinceStateChanged = 1;
@@ -623,6 +659,11 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 			{
 				if (timeSinceStateChanged < JumpDuration)
 					Velocity.y = JumpVelocity;
+			}
+			else if (SpringInfluenced)
+			{
+				if (timeSinceSpringInfluenced < springInfluenceTimeout)
+					Velocity.y = origVelocityY;
 			}
 			else
 			{
@@ -704,7 +745,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 		}
 		else
 		{
-			if (Controls[RUN] && (Controls[LEFT] || Controls[RIGHT]))
+			if ((Controls[RUN] && (Controls[LEFT] || Controls[RIGHT])) || SpringInfluenced)
 			{
 				Facing = Controls[LEFT] ? -1 : 1;
 				if ((Controls[LEFT] && (coll.iLeft <= 1)) || (Controls[RIGHT] && (coll.iRight <= 1)))
@@ -713,7 +754,8 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 				}
 				else
 				{
-					Velocity.x = ((1.0f - Acceleration) * Velocity.x) + (Acceleration * RunSpeed * Facing);
+					if(!SpringInfluenced)
+						Velocity.x = ((1.0f - Acceleration) * Velocity.x) + (Acceleration * RunSpeed * Facing);
 				}
 			}
 			else if (!Controls[RUN] && (Controls[LEFT] || Controls[RIGHT]))
@@ -844,7 +886,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 		if ((coll.iBottomCenter <= 0) || (coll.iBottomLeft <= 0) || (coll.iBottomRight <= 0))
 		{
 			grounded = true;
-			if (Controls[LEFT] || Controls[RIGHT])
+			if (Controls[LEFT] || Controls[RIGHT] || SpringInfluenced)
 			{
 				SetState(Controls[RUN] ? RUNNING : WALKING);
 			}
@@ -865,7 +907,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 			}
 			else
 			{
-				if (Controls[LEFT] || Controls[RIGHT])
+				if (Controls[LEFT] || Controls[RIGHT] || SpringInfluenced)
 				{
 					Facing = Controls[LEFT] ? -1 : 1;
 					Velocity.x = ((1.0f - AirControl) * Velocity.x) + (AirControl * (Controls[RUN] ? RunSpeed : WalkSpeed) * Facing);
@@ -908,7 +950,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 		}
 		break;
 	case BUTTSTOMP:
-		if(coll.CollisionState == ButtStompScenery)
+		if((coll.CollisionState == ButtStompScenery) || (coll.CollisionState == DestructScenery))
 		{
 			coll.iBottomCenter = INT_MAX;
 			coll.iBottomLeft = INT_MAX;
@@ -1576,21 +1618,42 @@ bool Player::CollidedWithActor(const Actor &actor)
 	}
 	if (actor.GetEventID() == RedSpring)
 	{
-		Velocity.y = JumpVelocity * 1.5;
-		SetState(JUMPING);
+		Velocity.y = RedSpringJumpSpeed;
+		SetState(HIGHJUMP);
 		grounded = false;
+		SetSpringInfluenced(RedSpringJumpDuration);
 	}
 	else if (actor.GetEventID() == GreenSpring)
 	{
-		Velocity.y = JumpVelocity * 2.25;
-		SetState(JUMPING);
+		Velocity.y = GreenSpringJumpSpeed;
+		SetState(HIGHJUMP);
 		grounded = false;
+		SetSpringInfluenced(GreenSpringJumpDuration);
 	}
 	else if (actor.GetEventID() == BlueSpring)
 	{
-		Velocity.y = JumpVelocity * 2.5;
-		SetState(JUMPING);
+		Velocity.y = BlueSpringJumpSpeed;
+		SetState(HIGHJUMP);
 		grounded = false;
+		SetSpringInfluenced(BlueSpringJumpDuration);
+	}
+	else if (actor.GetEventID() == HorRedSpring)
+	{
+		SetState(grounded ? RUNNING : RUNNING_JUMP);
+		SetSpringInfluenced(FLT_MAX);
+		Velocity.x = HorRedSpringVelocity * (actor.IsFlipped() ? -1.0f : 1.0f);
+	}
+	else if (actor.GetEventID() == HorGreenSpring)
+	{
+		SetState(grounded ? RUNNING : RUNNING_JUMP);
+		SetSpringInfluenced(FLT_MAX);
+		Velocity.x = HorGreenSpringVelocity * (actor.IsFlipped() ? -1.0f : 1.0f);
+	}
+	else if (actor.GetEventID() == HorBlueSpring)
+	{ 
+		SetState(grounded ? RUNNING : RUNNING_JUMP);
+		SetSpringInfluenced(FLT_MAX);
+		Velocity.x = HorBlueSpringVelocity * (actor.IsFlipped() ? -1.0f : 1.0f);
 	}
 	return consumed;
 }

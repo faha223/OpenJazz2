@@ -45,7 +45,9 @@ public:
 	GemType GetGemType() const;
 	uint8_t GetLivesAdd() const;
 	uint16_t GetPointValue() const;
+	bool IsFlipped() const;
 	bool AddsSparkleOnDeath() const;
+	bool RenderFromColdSpot() const;
 	bool CheckCollision(const Player *player, const std::map<uint32_t, SpriteCoords> &sprites) const;
 	bool CheckCollision();
 	~Actor();

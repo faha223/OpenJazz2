@@ -8,7 +8,9 @@ using namespace std;
 
 #define ActorFloatingRadius 4.0f  // Number of pixels it oscillates per second
 #define ActorFloatingPeriod 6.75f // Number of radians it cycles of oscillation per second
+#ifndef FallingGravity
 #define FallingGravity 768.0f	  // Measured
+#endif
 
 static int32_t nextOffsetPoint = 0;
 
@@ -109,6 +111,18 @@ Actor::Actor(const Level *level, const Tileset *tileset, const vec2 &location, c
 		break;
 	case BlueSpring:
 		anim = springs->GetAnim(ANIM_SPRING_UP_GREEN);
+		DoesNotFloat = true;
+		break;
+	case HorRedSpring:
+		anim = springs->GetAnim(ANIM_SPRING_RT_RED);
+		DoesNotFloat = true;
+		break;
+	case HorGreenSpring:
+		anim = springs->GetAnim(ANIM_SPRING_RT_GREEN);
+		DoesNotFloat = true;
+		break;
+	case HorBlueSpring:
+		anim = springs->GetAnim(ANIM_SPRING_RT_BLUE);
 		DoesNotFloat = true;
 		break;
 	}
@@ -250,6 +264,23 @@ GemType Actor::GetGemType() const
 	}
 }
 
+bool Actor::IsFlipped() const
+{
+	switch (eventId)
+	{
+	case RedSpring:
+	case GreenSpring:
+	case BlueSpring:
+		return false;
+	case HorRedSpring:
+	case HorGreenSpring:
+	case HorBlueSpring:
+		return false;
+	default:
+		return false;
+	}
+}
+
 uint16_t Actor::GetPointValue() const
 {
 	switch(eventId)
@@ -323,23 +354,33 @@ const AnimationFrame *Actor::GetFrame() const
 	return nullptr;
 }
 
+bool Actor::RenderFromColdSpot() const
+{
+	// Return true only for the events that are rendered from their coldspot
+	switch (eventId)
+	{
+	case RedSpring:
+	case GreenSpring:
+	case BlueSpring:
+	case GemCrate:
+	case Guncrate:
+	case BigBox:
+		return true;
+	default:
+		break;
+	}
+	return false;
+}
+
 inline bool HotspotCollision(const Player *player, vec2 hotspot)
 {
 	SDL_Rect aRect, pRect;
-	int flipped = (player->GetFacing() == -1);
 	vec2 playerPos = player->GetPosition();
-	const AnimationFrame *pFrame = player->GetSprite();
-	vec2 pHotspot = pFrame->getHotSpot();
 
-	if (!flipped)
-		playerPos += vec2(pHotspot.x, pFrame->getHeight() + pHotspot.y - 20);
-	else
-		playerPos += vec2(-pHotspot.x, pFrame->getHeight() + pHotspot.y - 20);
-
-	pRect.x = playerPos.x - ((flipped) ? (pFrame->getWidth()) : 0);
-	pRect.y = playerPos.y - (float)pFrame->getHeight();
-	pRect.w = pFrame->getWidth();
-	pRect.h = pFrame->getHeight();
+	pRect.x = playerPos.x - 16;
+	pRect.y = playerPos.y - 30;
+	pRect.w = 32;
+	pRect.h = 32;
 	return ((hotspot.x >= pRect.x) && (hotspot.x <= (pRect.x + pRect.w))
 		&& (hotspot.y >= pRect.y) && (hotspot.y <= (pRect.y + pRect.h)));
 }
@@ -347,8 +388,12 @@ inline bool HotspotCollision(const Player *player, vec2 hotspot)
 bool Actor::CheckCollision(const Player *player, const map<uint32_t, SpriteCoords> &sprites) const
 {
 	const AnimationFrame *aFrame = GetFrame();
-	vec2 aHotspot = aFrame->getHotSpot();
-	return HotspotCollision(player, Location + vec2(0,32) + aHotspot);
+	vec2 hotspot = GetPosition();
+	if (RenderFromColdSpot())
+	{
+		hotspot = GetPosition() + vec2(0,16) + aFrame->getHotSpot() - aFrame->getColdSpot();
+	}
+	return HotspotCollision(player, hotspot);
 }
 
 inline void AdjustClipMask(uint8_t id, uint8_t *mask)

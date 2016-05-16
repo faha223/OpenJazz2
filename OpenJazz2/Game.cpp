@@ -6,6 +6,7 @@ using namespace std;
 #define DEBUG_KEYS
 
 //#define SAVE_SPRITESHEETS
+//#define DRAW_PLAYER_BOUNDING_BOX
 
 static string VertexShader = string("#version 330\n") +
 string("uniform mat4 m_Projection;\n") +
@@ -584,23 +585,23 @@ void Game::Run()
 						const AnimationFrame *frame = actor->GetFrame();
 						if (frame != nullptr)
 						{
-							vec2 Coldspot = frame->getColdSpot();
+							
 							SpriteCoords coords = Sprites[frame->getIndex()];
 							vec2 position = actor->GetPosition();
 							vertex actorVerts[4];
 
-							switch (actor->GetEventID())
+							if (actor->RenderFromColdSpot())
 							{
-							case RedSpring:
-							case GreenSpring:
-							case BlueSpring:
+								vec2 Coldspot = frame->getColdSpot();
 								while ((int)position.y % 32 > 0)
 									position.y = ((int)position.y) + 1;
 								position += vec2(0, 32);
 								position += vec2(Coldspot.x, Coldspot.y);
-								break;
-							default:
-								position += vec2(Coldspot.x, Coldspot.y);
+							}
+							else
+							{
+								vec2 Hotspot = frame->getHotSpot();
+								position += vec2(Hotspot.x, Hotspot.y);
 							}
 
 							actorVerts[0].x = position.x;
@@ -667,6 +668,31 @@ void Game::Run()
 					int flipped = (player->GetFacing() == -1);
 
 					vec2 playerPos = player->GetPosition();
+
+#ifdef DRAW_PLAYER_BOUNDING_BOX
+					glBindTexture(GL_TEXTURE_2D, 0);
+					glColor3f(1, 0, 0);
+					vertex BoxVerts[4];
+					BoxVerts[0].x = playerPos.x - 12;
+					BoxVerts[0].y = playerPos.y;
+					BoxVerts[0].z = depth;
+					BoxVerts[1].x = playerPos.x - 12;
+					BoxVerts[1].y = playerPos.y - 30;
+					BoxVerts[1].z = depth;
+					BoxVerts[2].x = playerPos.x + 12;
+					BoxVerts[2].y = playerPos.y - 30;
+					BoxVerts[2].z = depth;
+					BoxVerts[3].x = playerPos.x + 12;
+					BoxVerts[3].y = playerPos.y;
+					BoxVerts[3].z = depth;
+					glBindBuffer(GL_ARRAY_BUFFER, playerVBO);
+					glBufferData(GL_ARRAY_BUFFER, 20 * sizeof(float), BoxVerts, GL_STREAM_DRAW);
+					glVertexPointer(3, GL_FLOAT, 5 * sizeof(float), (void*)0);
+					glDrawArrays(GL_QUADS, 0, 4);
+					glBindTexture(GL_TEXTURE_2D, SpriteSheets[0]);
+					glColor3f(1, 1, 1);
+#endif
+
 					if (!flipped)
 						playerPos += vec2(Hotspot.x, coord.height + Hotspot.y - 20);//Hotspot.y);
 					else
@@ -869,11 +895,11 @@ void Game::Run()
 			int tileXCoord = Math::Floor((playerPos.x - 12) / 32);
 			int tileYCoord = Math::Floor(playerPos.y / 32);
 			J2L_Event event = level->GetEvents(tileXCoord, tileYCoord + 1);
-			if(event.EventID == ButtStompScenery)
+			if((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
 				level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord + 1) + tileXCoord, 1);
 			tileXCoord = Math::Floor((playerPos.x + 12) / 32);
 			event = level->GetEvents(tileXCoord, tileYCoord + 1);
-			if(event.EventID == ButtStompScenery)
+			if ((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
 				level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord + 1) + tileXCoord, 1);
 		}
 		else if (player->GetState() == HIGHJUMP)
@@ -884,11 +910,11 @@ void Game::Run()
 			if (tileYCoord > 0)
 			{
 				J2L_Event event = level->GetEvents(tileXCoord, tileYCoord - 1);
-				if (event.EventID == ButtStompScenery)
+				if ((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
 					level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord - 1) + tileXCoord, 1);
 				tileXCoord = Math::Floor((playerPos.x + 12) / 32);
 				event = level->GetEvents(tileXCoord, tileYCoord - 1);
-				if (event.EventID == ButtStompScenery)
+				if ((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
 					level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord - 1) + tileXCoord, 1);
 			}
 		}

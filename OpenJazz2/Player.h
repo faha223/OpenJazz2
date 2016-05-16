@@ -34,6 +34,17 @@
 #define HPoleExitSpeed 1024.0f 		// Needs Tweaked
 #define InvincibilityDuration 2.0f	// Needs Tweaked
 #define ShootIdleTime 1.5f			// Needs Tweaked
+#define RedSpringJumpSpeed (JumpVelocity * 1.65)
+#define RedSpringJumpDuration 0.1f
+#define GreenSpringJumpSpeed (JumpVelocity * 1.65)
+#define GreenSpringJumpDuration 0.25f
+#define BlueSpringJumpSpeed (JumpVelocity * 1.65)
+#define BlueSpringJumpDuration 0.4f
+#define HorRedSpringVelocity (JumpVelocity * -2.0f)
+#define HorGreenSpringVelocity (JumpVelocity * -2.25f)
+#define HorBlueSpringVelocity (JumpVelocity * -2.5f)
+
+#pragma region Player States
 
 enum PlayerState
 {
@@ -82,6 +93,10 @@ enum PlayerState
 	LEVEL_ENDED
 };
 
+#pragma endregion
+
+#pragma region CollisionInfo
+
 struct CollisionInfo
 {
 	// Interpenetration Values:
@@ -96,6 +111,8 @@ struct CollisionInfo
 	int iBottomRight;
 	int iTop;
 };
+
+#pragma endregion
 
 class Actor;
 
@@ -124,6 +141,9 @@ private:
 	uint16_t PurpleGems;
 	bool Invincible;
 	float TimeSinceMadeInvincible;
+	bool SpringInfluenced;
+	float timeSinceSpringInfluenced;
+	float springInfluenceTimeout;
 
 	uint32_t lastTileCoord;
 	uint8_t *quad;
@@ -136,6 +156,7 @@ private:
 	bool ResolveCollision(CollisionInfo coll);
 	bool HasAnimationEnded() const;
 	void SetState(const PlayerState &newState);
+	void SetSpringInfluenced(const float &timeout);
 public:
 	Player(const vec2 &startPosition, const Level *level, const Tileset *tileset, const Animations *anims);
 	~Player();
