@@ -49,10 +49,7 @@ difficulty(Normal)
 
 	Illuminate = (event.EventData[0] & 0x20) != 0;
 
-	int32_t xVel = 0;
-	int32_t yVel = 0;
-	int8_t xVelB = 0x00;
-	int8_t yVelB = 0x00;
+	int8_t sbyte = 0;
 	FILE *fp = nullptr;
 	switch(id)
 	{
@@ -60,20 +57,16 @@ difficulty(Normal)
 		Active = true;
 		difficulty = Normal;
 		Illuminate = false;
-		
-		xVelB = ((0xF0 & event.EventData[0]) >> 4) | ((0x07 & event.EventData[1]) << 4) | ((0x04 & event.EventData[1]) << 5);
-		/*if (xVelB & 0x40)
-			xVelB |= 0x80;
-*/
-		yVelB = ((0x03 & event.EventData[2]) << 5) | ((0xF8 & event.EventData[1]) >> 3) | ((0x02 & event.EventData[2]) << 6);
-		/*if (yVelB & 0x40)
-			yVelB |= 0x80;*/
 
-		xVel = ((int32_t)xVelB) * SuckerTubeSpeedScale;
-		yVel = ((int32_t)yVelB) * SuckerTubeSpeedScale;
+#pragma region Get Parameters
 
-		params.push_back(Parameter("X-Velocity", xVel));
-		params.push_back(Parameter("Y-Velocity", yVel));
+		sbyte = (((0xF0 & event.EventData[0]) >> 4) | ((0x07 & event.EventData[1]) << 4) | ((0x04 & event.EventData[1]) << 5));
+		params.push_back(Parameter("X-Velocity", ((int32_t)sbyte) * SuckerTubeSpeedScale));
+		sbyte = (((0x03 & event.EventData[2]) << 5) | ((0xF8 & event.EventData[1]) >> 3) | ((0x02 & event.EventData[2]) << 6));
+		params.push_back(Parameter("Y-Velocity", ((int32_t)sbyte) * SuckerTubeSpeedScale));
+
+#pragma endregion Get Parameters
+
 		break;
 	default:
 		break;
