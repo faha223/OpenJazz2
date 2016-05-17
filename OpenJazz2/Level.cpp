@@ -585,7 +585,9 @@ bool Level::IsLayerLimitedToVisibleRegion(const uint32_t &layer) const
 J2L_Event Level::GetEvents(const uint32_t &tileXCoord, const uint32_t &tileYCoord) const
 {
 	uint32_t tileCoord = GetLayerWidth(3) * tileYCoord + tileXCoord;
-	return Data2_1_23->Events[tileCoord];
+	if(Data2_1_23->Events.size() > tileCoord)
+		return Data2_1_23->Events[tileCoord];
+	return J2L_Event();
 }
 
 //void Level::DumpLayerTilesRaw(const uint32_t &layer, const char *filename) const 

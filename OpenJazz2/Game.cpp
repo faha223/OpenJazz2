@@ -260,11 +260,12 @@ state(MainMenu)
 	Layers[5] = 0;
 	Layers[6] = 0;
 	Layers[7] = 0;
-	//LevelFile = Path::Combine(JAZZ2_DIR, "Psych1.j2l");
 	auto now = std::chrono::system_clock::now();
 	auto duration = now.time_since_epoch();
 	startTime = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() * 0.001f;
 	LoadSettings();
+
+	//LevelFile = Path::Combine(Path, "test.j2l");
 
 	int SDL_Error = SDL_Init(SDL_INIT_EVERYTHING);
 	if (SDL_Error < 0)

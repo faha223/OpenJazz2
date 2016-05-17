@@ -51,16 +51,21 @@ difficulty(Normal)
 
 	int32_t xVel = 0;
 	int32_t yVel = 0;
+	int8_t xVelB = 0x00;
+	int8_t yVelB = 0x00;
 	FILE *fp = nullptr;
 	switch(id)
 	{
 	case SuckerTube:
+		Active = true;
 		difficulty = Normal;
 		Illuminate = false;
-		char buffer[16];
+		char buffer[16], buffer2[16];
 		memset(buffer, 0, 16);
+		memset(buffer2, 0, 16);
 		sprintf_s(buffer, 16, "0x%02X%02X%02X", event.EventData[0], event.EventData[1], event.EventData[2]);
-		
+		sprintf_s(buffer2, 16, "0x%02X%02X%02X", event.EventData[2], event.EventData[1], event.EventData[0]);
+
 		fopen_s(&fp, "C:\\users\\fred.hallock\\Desktop\\log.txt", "a");
 		if (fp != nullptr)
 		{
@@ -68,27 +73,17 @@ difficulty(Normal)
 			fclose(fp);
 		}
 		
-		if ((event.EventData[0] == 0x60) && (event.EventData[1] == 0x07) && (event.EventData[2] == 0x00))
-		{
-			xVel = -10 * SuckerTubeSpeedScale;
-		}
-		else if ((event.EventData[0] == 0xa0) && (event.EventData[1] == 0x00) && (event.EventData[2] == 0x00))
-		{
-			xVel = 10 * SuckerTubeSpeedScale;
-		}
-		else if ((event.EventData[0] == 0x00) && (event.EventData[1] == 0xb0) && (event.EventData[2] == 0x03))
-		{
-			yVel = -10 * SuckerTubeSpeedScale;
-		}
-		else if((event.EventData[0] == 0x00) && (event.EventData[1] == 0x50) && (event.EventData[2] == 0x00))
-		{
-			yVel = 10 * SuckerTubeSpeedScale;
-		}
-		else
-		{
-			yVel = 0;
-			xVel = 0;
-		}
+		xVelB = ((0xF0 & event.EventData[0]) >> 4) | ((0x07 & event.EventData[1]) << 4) | ((0x04 & event.EventData[1]) << 5);
+		/*if (xVelB & 0x40)
+			xVelB |= 0x80;
+*/
+		yVelB = ((0x03 & event.EventData[2]) << 5) | ((0xF8 & event.EventData[1]) >> 3) | ((0x02 & event.EventData[2]) << 6);
+		/*if (yVelB & 0x40)
+			yVelB |= 0x80;*/
+
+		xVel = ((int32_t)xVelB) * SuckerTubeSpeedScale;
+		yVel = ((int32_t)yVelB) * SuckerTubeSpeedScale;
+
 		params.push_back(Parameter("X-Velocity", xVel));
 		params.push_back(Parameter("Y-Velocity", yVel));
 		break;

@@ -914,7 +914,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 		{
 			grounded = false;
 		} 
-		if((abs(Velocity.x) <= (Controls[RUN] ? RunSpeed : WalkSpeed)) && (abs(Velocity.y) <= (Controls[RUN] ? RunSpeed : WalkSpeed)))
+		if((abs(Velocity.x) <= WalkSpeed) && (abs(Velocity.y) <= WalkSpeed))
 		{
 			SetState(DESCENDING);
 		}
