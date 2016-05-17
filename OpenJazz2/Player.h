@@ -9,40 +9,45 @@
 #include "Tileset.h"
 #include "Animation.h"
 
-#define MaxVelocity 512.0f			// Measured
-#define WalkSpeed 270.0f			// Measured
-#define RunSpeed 580.0f				// Measured
-#define Gravity (1536.0f)			// Measured
-#define FallingGravity (768.0f)		// Measured
-#define Acceleration 0.125f			// 
-#define JumpVelocity -480.0f		// Measured
-#define HighJumpVelocity -480.0f	// Measured
-#define JumpDuration 0.125f			// Measured
-#define JumpAcceleration 0.025f		// 
-#define HighJumpAcceleration 0.075f	// 
-#define HighJumpDuration 0.1f		// Measured
-#define CopterDescentSpeed 40.0f	// Measured
-#define CopterTime 1.0f				// 
-#define HighJumpTime 0.25f 			// Measured
-#define AirControl 0.15f			// Measured
-#define MaxHangingMoveSpeed 128.0f 	// Measured
-#define MinHangingMoveSpeed 64.0f 	// Measured
-#define HangingMoveSpeedPeriod 7.85f // Measured
-#define HangingMoveSpeedPeriodOffset 2.8f
-#define MaxFastHangingMoveSpeed 256.0f // Measured
-#define ButtstompVelocity 1024.0f 	// Needs Tweaked
-#define HPoleExitSpeed 1024.0f 		// Needs Tweaked
-#define InvincibilityDuration 2.0f	// Needs Tweaked
-#define ShootIdleTime 1.5f			// Needs Tweaked
-#define RedSpringJumpSpeed (JumpVelocity * 1.65)
-#define RedSpringJumpDuration 0.1f
-#define GreenSpringJumpSpeed (JumpVelocity * 1.65)
-#define GreenSpringJumpDuration 0.25f
-#define BlueSpringJumpSpeed (JumpVelocity * 1.65)
-#define BlueSpringJumpDuration 0.4f
-#define HorRedSpringVelocity (JumpVelocity * -2.0f)
-#define HorGreenSpringVelocity (JumpVelocity * -2.25f)
-#define HorBlueSpringVelocity (JumpVelocity * -2.5f)
+#pragma region Gameplay Calibration
+
+#define MaxVelocity 512.0f								// Measured
+#define WalkSpeed 270.0f								// Measured
+#define RunSpeed 580.0f									// Measured
+#define Gravity (1536.0f)								// Measured
+#define FallingGravity (768.0f)							// Measured
+#define Acceleration 0.125f								// 
+#define JumpVelocity -480.0f							// Measured
+#define HighJumpVelocity -480.0f						// Measured
+#define JumpDuration 0.125f								// Measured
+#define JumpAcceleration 0.025f							// 
+#define HighJumpAcceleration 0.075f						// 
+#define HighJumpDuration 0.1f							// Measured
+#define CopterDescentSpeed 40.0f						// Measured
+#define CopterTime 1.0f									// 
+#define HighJumpTime 0.25f 								// Measured
+#define AirControl 0.15f								// Measured
+#define MaxHangingMoveSpeed 128.0f 						// Measured
+#define MinHangingMoveSpeed 64.0f 						// Measured
+#define HangingMoveSpeedPeriod 7.85f					// Measured
+#define HangingMoveSpeedPeriodOffset 2.8f				//
+#define MaxFastHangingMoveSpeed 256.0f					// Measured
+#define ButtstompVelocity 1024.0f 						// Needs Tweaked
+#define HPoleExitSpeed 1024.0f 							// Needs Tweaked
+#define MaxPoleExitSpeed 1536.0f						// Needs Tweaked
+#define InvincibilityDuration 2.0f						// Needs Tweaked
+#define ShootIdleTime 1.5f								// Needs Tweaked
+#define RedSpringJumpSpeed (JumpVelocity * 1.25)		// Needs Tweaked
+#define RedSpringJumpDuration 0.35f						// Needs Tweaked
+#define GreenSpringJumpSpeed (JumpVelocity * 1.25)		// Needs Tweaked
+#define GreenSpringJumpDuration 0.5f					// Needs Tweaked
+#define BlueSpringJumpSpeed (JumpVelocity * 1.25)		// Needs Tweaked
+#define BlueSpringJumpDuration 0.85f					// Needs Tweaked
+#define HorRedSpringVelocity (JumpVelocity * -2.0f)		// Needs Tweaked
+#define HorGreenSpringVelocity (JumpVelocity * -2.25f)	// Needs Tweaked
+#define HorBlueSpringVelocity (JumpVelocity * -2.5f)	// Needs Tweaked
+
+#pragma endregion Gameplay Calibration
 
 #pragma region Player States
 
@@ -63,6 +68,7 @@ enum PlayerState
 	ENDING_SKID,
 	RUNNING_JUMP,
 	JUMPING,
+	SPRING_JUMP,
 	LANDING,
 	STARTING_HIGHJUMP,
 	HIGHJUMP,

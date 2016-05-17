@@ -130,6 +130,10 @@ const AnimationFrame *Player::GetSprite() const
 		case PREPARING_BUTTSTOMP:
 			CurrentAnim = ANIM_JAZZ_BUTTSTOMP_PENDING;
 			break;
+		case SPRING_JUMP:
+			CurrentAnim = ANIM_JAZZ_BUTTSTOMP_PENDING;
+			AnimSpeedModifier = 3.0f;
+			break;
 		case BUTTSTOMP:
 			CurrentAnim = ANIM_JAZZ_BUTTSTOMP;
 			AnimSpeedModifier = 4.0f;
@@ -598,8 +602,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 	case HIGHJUMP:
 		if (TileYCoord > 0)
 		{
-			auto tileEvent = level->GetEvents(TileXCoord, TileYCoord + 1);
-			if((tileEvent.EventID == ButtStompScenery) || (tileEvent.EventID == DestructScenery))
+			if((coll.CollisionState == ButtStompScenery) || (coll.CollisionState == DestructScenery))
 			{
 				coll.iTop = INT_MAX;
 				Velocity.y = origVelocityY;
@@ -622,7 +625,57 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 		{
 			grounded = true;
 			SetState(VPOLE);
-			ExitPoleVelocity = 2 * Velocity.y;
+			ExitPoleVelocity = (Velocity.y < 0 ? -1 : 1) * min(MaxPoleExitSpeed, abs(2 * Velocity.y));
+		}
+		break;
+	case SPRING_JUMP:
+		if (TileYCoord > 0)
+		{
+			if ((coll.CollisionState == ButtStompScenery) || (coll.CollisionState == DestructScenery))
+			{
+				coll.iTop = INT_MAX;
+				Velocity.y = origVelocityY;
+			}
+		}
+		if ((coll.CollisionState == Vine) || (coll.CollisionState == Hook))
+		{
+			grounded = true;
+			Velocity.y = 0;
+			SetState(HANGING);
+		}
+		else
+		{
+			if (coll.iTop < 0)
+			{
+				Velocity.y = 0;
+				SetState(DESCENDING);
+			}
+
+			if (Controls[LEFT] || Controls[RIGHT])
+			{
+				Facing = Controls[LEFT] ? -1 : 1;
+				Velocity.x = ((1.0f - AirControl) * Velocity.x) + (AirControl * (Controls[RUN] ? RunSpeed : WalkSpeed) * Facing);
+			}
+			else
+			{
+				Velocity.x = (1.0f - AirControl) * Velocity.x;
+			}
+
+			if (SpringInfluenced && (springInfluenceTimeout > timeSinceSpringInfluenced))
+			{
+				Velocity.y = origVelocityY;
+			}
+			else
+			{
+				SetState(JUMPING);
+				timeSinceStateChanged = 1;
+			}
+			if (event.EventID == VPole)
+			{
+				grounded = true;
+				SetState(VPOLE);
+				ExitPoleVelocity = (Velocity.y < 0 ? -1 : 1) * min(MaxPoleExitSpeed, abs(2 * Velocity.y));
+			}
 		}
 		break;
 	case PUSHING:
@@ -688,7 +741,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 			{
 				grounded = true;
 				SetState(VPOLE);
-				ExitPoleVelocity = 2 * Velocity.y;
+				ExitPoleVelocity = (Velocity.y < 0 ? -1 : 1) * min(MaxPoleExitSpeed, abs(2 * Velocity.y));
 			}
 		}
 		break;
@@ -731,7 +784,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 			}
 			if(event.EventID == HPole)
 			{
-				ExitPoleVelocity = 2 * Facing * WalkSpeed;
+				ExitPoleVelocity = Facing * min(MaxPoleExitSpeed, 2 * WalkSpeed);
 				SetState(HPOLE);
 			}
 		}
@@ -776,7 +829,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 			}
 			if(event.EventID == HPole)
 			{
-				ExitPoleVelocity = 2 * Facing * RunSpeed;
+				ExitPoleVelocity = Facing * min(MaxPoleExitSpeed, 2 * RunSpeed);
 				SetState(HPOLE);
 			}
 		}
@@ -828,7 +881,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 		}
 		if(event.EventID == HPole)
 		{
-			ExitPoleVelocity = 2 * Facing * WalkSpeed;
+			ExitPoleVelocity = Facing * min(MaxPoleExitSpeed, 2 * WalkSpeed);
 			Velocity.x = 0;
 			SetState(HPOLE);
 		}
@@ -874,7 +927,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 		if(event.EventID == VPole)
 		{
 			SetState(VPOLE);
-			ExitPoleVelocity = 2 * Velocity.y;
+			ExitPoleVelocity = (Velocity.y < 0 ? -1 : 1) * min(MaxPoleExitSpeed, abs(2 * Velocity.y));
 			grounded = true;
 			Velocity.y = 0;
 		}
@@ -937,7 +990,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 				{
 					grounded = true;
 					SetState(VPOLE);
-					ExitPoleVelocity = 2 * Velocity.y;
+					ExitPoleVelocity = (Velocity.y < 0 ? -1 : 1) * min(MaxPoleExitSpeed, abs(2 * Velocity.y));
 				}
 			}
 		}
@@ -973,7 +1026,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 			{
 				grounded = true;
 				SetState(VPOLE);
-				ExitPoleVelocity = 2 * Velocity.y;
+				ExitPoleVelocity = (Velocity.y < 0 ? -1 : 1) * min(MaxPoleExitSpeed, abs(2 * Velocity.y));
 				Velocity.y = 0;
 			}
 		}
@@ -1111,7 +1164,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 			{
 				grounded = true;
 				SetState(VPOLE);
-				ExitPoleVelocity = 2 * Velocity.y;
+				ExitPoleVelocity = (Velocity.y < 0 ? -1 : 1) * min(MaxPoleExitSpeed, abs(2 * WalkSpeed));
 			}
 		}
 		break;
@@ -1547,15 +1600,23 @@ CollisionInfo Player::CheckCollision(const vec2 &PreviousPosition)
 			{
 				coll.iTop = i;
 			}
-			else if((clip[coord1] == Vine) && (clip[coord2] == Vine) && !clipTopReached)
+			else if ((clip[coord1] == Vine) && (clip[coord2] == Vine) && !clipTopReached)
 			{
 				coll.iTop = i;
 				coll.CollisionState = Vine;
-				if(i < -4)
+				if (i < -4)
 				{
 					coll.CollisionState = 0;
 					coll.iTop = INT_MAX;
 				}
+			}
+			else if ((clip[coord1] == ButtStompScenery) || (clip[coord2] == ButtStompScenery))
+			{
+				coll.CollisionState = ButtStompScenery;
+			}
+			else if ((clip[coord1] == DestructScenery) || (clip[coord2] == DestructScenery))
+			{
+				coll.CollisionState = DestructScenery;
 			}
 		}
 		// Check for collision to the bottom left coord
@@ -1621,7 +1682,7 @@ bool Player::CollidedWithActor(const Actor &actor)
 		Position.x = actor.GetPosition().x;
 		Velocity.x = 0;
 		Velocity.y = RedSpringJumpSpeed;
-		SetState(HIGHJUMP);
+		SetState(SPRING_JUMP);
 		grounded = false;
 		SetSpringInfluenced(RedSpringJumpDuration);
 	}
@@ -1630,7 +1691,7 @@ bool Player::CollidedWithActor(const Actor &actor)
 		Position.x = actor.GetPosition().x;
 		Velocity.x = 0;
 		Velocity.y = GreenSpringJumpSpeed;
-		SetState(HIGHJUMP);
+		SetState(SPRING_JUMP);
 		grounded = false;
 		SetSpringInfluenced(GreenSpringJumpDuration);
 	}
@@ -1639,7 +1700,7 @@ bool Player::CollidedWithActor(const Actor &actor)
 		Position.x = actor.GetPosition().x;
 		Velocity.x = 0;
 		Velocity.y = BlueSpringJumpSpeed;
-		SetState(HIGHJUMP);
+		SetState(SPRING_JUMP);
 		grounded = false;
 		SetSpringInfluenced(BlueSpringJumpDuration);
 	}
@@ -1648,18 +1709,30 @@ bool Player::CollidedWithActor(const Actor &actor)
 		SetState(grounded ? RUNNING : RUNNING_JUMP);
 		SetSpringInfluenced(FLT_MAX);
 		Velocity.x = HorRedSpringVelocity * (actor.IsFlipped() ? -1.0f : 1.0f);
+		if (Velocity.x < 0)
+			Facing = -1;
+		else
+			Facing = 1;
 	}
 	else if (actor.GetEventID() == HorGreenSpring)
 	{
 		SetState(grounded ? RUNNING : RUNNING_JUMP);
 		SetSpringInfluenced(FLT_MAX);
 		Velocity.x = HorGreenSpringVelocity * (actor.IsFlipped() ? -1.0f : 1.0f);
+		if (Velocity.x < 0)
+			Facing = -1;
+		else
+			Facing = 1;
 	}
 	else if (actor.GetEventID() == HorBlueSpring)
 	{ 
 		SetState(grounded ? RUNNING : RUNNING_JUMP);
 		SetSpringInfluenced(FLT_MAX);
 		Velocity.x = HorBlueSpringVelocity * (actor.IsFlipped() ? -1.0f : 1.0f);
+		if (Velocity.x < 0)
+			Facing = -1;
+		else
+			Facing = 1;
 	}
 	return consumed;
 }
