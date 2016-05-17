@@ -60,18 +60,6 @@ difficulty(Normal)
 		Active = true;
 		difficulty = Normal;
 		Illuminate = false;
-		char buffer[16], buffer2[16];
-		memset(buffer, 0, 16);
-		memset(buffer2, 0, 16);
-		sprintf_s(buffer, 16, "0x%02X%02X%02X", event.EventData[0], event.EventData[1], event.EventData[2]);
-		sprintf_s(buffer2, 16, "0x%02X%02X%02X", event.EventData[2], event.EventData[1], event.EventData[0]);
-
-		fopen_s(&fp, "C:\\users\\fred.hallock\\Desktop\\log.txt", "a");
-		if (fp != nullptr)
-		{
-			fprintf_s(fp, "%s\n", buffer);
-			fclose(fp);
-		}
 		
 		xVelB = ((0xF0 & event.EventData[0]) >> 4) | ((0x07 & event.EventData[1]) << 4) | ((0x04 & event.EventData[1]) << 5);
 		/*if (xVelB & 0x40)
