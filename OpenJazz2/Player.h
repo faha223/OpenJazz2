@@ -162,8 +162,11 @@ private:
 	float springInfluenceTimeout;
 
 	uint32_t bouncerAmmo;
+	bool hasUpgradedBouncer;
 	uint32_t toasterAmmo;
+	bool hasUpgradedToaster;
 	uint32_t freezerAmmo;
+	bool hasUpgradedFreezer;
 
 	uint32_t lastTileCoord;
 	uint8_t *quad;

@@ -29,6 +29,8 @@ Actor::Actor(const Level *level, const Tileset *tileset, const vec2 &location, c
 	lastTileCoord(0),
 	quad(nullptr),
 	animateOnCollision(false),
+	animateOnce(false),
+	stopAtAnimationEnd(false),
 	state(Looping),
 	timeSinceStateChanged(0),
 	isFlipped(false),
@@ -162,6 +164,15 @@ Actor::Actor(const Level *level, const Tileset *tileset, const vec2 &location, c
 		anim = items->GetAnim(ANIM_BOUNCE_AMMO_CRATE);
 		DoesNotFloat = true;
 		state = Still;
+		break;
+	case Savepointsignpost:
+		anim = items->GetAnim(ANIM_CHECKPOINT);
+		DoesNotFloat = true;
+		state = Still;
+		animateOnce = true;
+		animateOnCollision = true;
+		stopAtAnimationEnd = true;
+		break;
 	default:
 		break;
 	}
@@ -184,6 +195,8 @@ Actor::Actor(const Actor &other) :
 	lastTileCoord(other.lastTileCoord),
 	quad(other.quad),
 	animateOnCollision(other.animateOnCollision),
+	animateOnce(other.animateOnce),
+	stopAtAnimationEnd(other.stopAtAnimationEnd),
 	state(other.state),
 	timeSinceStateChanged(other.timeSinceStateChanged),
 	isFlipped(other.isFlipped), 
@@ -214,6 +227,8 @@ Actor Actor::operator =(const Actor &other)
 	lastTileCoord = other.lastTileCoord;
 	quad = other.quad;
 	animateOnCollision = other.animateOnCollision;
+	animateOnce = other.animateOnce;
+	stopAtAnimationEnd = other.stopAtAnimationEnd;
 	state = other.state;
 	timeSinceStateChanged = other.timeSinceStateChanged;
 	isFlipped = other.isFlipped;
@@ -233,7 +248,7 @@ void Actor::Update(const float &timeElapsed)
 	Age += timeElapsed;
 	timeSinceStateChanged += timeElapsed;
 	if ((state == PlayOnce) && (IsAnimationEnded()))
-		SetState(Still);
+		SetState(stopAtAnimationEnd ? StillAtEnd : Still);
 }
 
 bool Actor::IsAnimationEnded() const
@@ -419,13 +434,26 @@ const AnimationFrame *Actor::GetFrame() const
 	{
 		uint32_t frameCount = anim->GetFrameCount();
 		uint32_t frameRate = anim->GetFrameRate();
-		int frame = ((int)Math::Floor(Age * frameRate * SpeedModifier)) % frameCount;
+		
+		auto animTime = ((int)Math::Floor(Age * frameRate * SpeedModifier));
+		if (stopAtAnimationEnd)
+			animTime = min(animTime, (frameCount - 1));
+		int frame = animTime % frameCount;
+
 		switch (state)
 		{
 		case Still:
 			return anim->GetFrame(0);
+		case StillAtEnd:
+			return anim->GetFrame(frameCount - 1);
+		case PlayOnce:
+			animTime = ((int)Math::Floor(timeSinceStateChanged * frameRate * SpeedModifier));
+			if (stopAtAnimationEnd)
+				animTime = min(animTime, (frameCount - 1));
+			frame = animTime % frameCount;
+			return anim->GetFrame(max(0, min(frame, frameCount - 1)));
 		default:
-			return anim->GetFrame(max(0, min(frameCount, frame)));
+			return anim->GetFrame(max(0, min(frame, frameCount - 1)));
 		}
 	}
 	return nullptr;
@@ -497,7 +525,7 @@ bool Actor::CheckCollision(const Player *player, const map<uint32_t, SpriteCoord
 	if (colliding)
 	{
 		// Logic when colliding with Player
-		if (animateOnCollision)
+		if (animateOnCollision && ((state == Still) || !animateOnce))
  			SetState(PlayOnce);
 	}
 	return colliding;

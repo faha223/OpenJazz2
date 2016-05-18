@@ -42,7 +42,12 @@ PurpleGems(0),
 Invincible(true), 
 TimeSinceMadeInvincible(0),
 SpringInfluenced(false),
-bouncerAmmo(0)
+bouncerAmmo(0),
+hasUpgradedBouncer(false),
+toasterAmmo(0),
+hasUpgradedToaster(false),
+freezerAmmo(0),
+hasUpgradedFreezer(false)
 { }
 
 void Player::InitLives(const uint32_t lives)

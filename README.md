@@ -8,19 +8,20 @@ This project uses the art assets from the game engine directly to play the game.
 - Walking
 - Running
 - Coins
-- Environmental Damage
 - Score UI
 - Spritefonts (not animated)
 - Ropes, Poles (mostly)
+- Ammo
+- Springs, mostly
 
 # What Doesn't Work
 - Sound
 - Weapons
-- Ammo
 - Most Pickups
 - Enemies
 - Crates
 - Destructible Environment Pieces
+- Bridges
 
 # Dependencies
 - OpenGL (GLEW, GLU)

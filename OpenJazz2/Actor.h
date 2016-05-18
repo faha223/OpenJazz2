@@ -14,6 +14,7 @@ enum Weapons;
 enum ActorState
 {
 	Still,
+	StillAtEnd,
 	PlayOnce,
 	Looping
 };
@@ -38,6 +39,8 @@ private:
 	uint32_t lastTileCoord;
 	uint8_t *quad;
 	bool animateOnCollision;
+	bool animateOnce;
+	bool stopAtAnimationEnd;
 	ActorState state;
 	float timeSinceStateChanged;
 	bool isFlipped;
