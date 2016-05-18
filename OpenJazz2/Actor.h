@@ -9,6 +9,7 @@
 class Level;
 class Tileset;
 class Player;
+enum Weapons;
 
 enum ActorState
 {
@@ -41,6 +42,9 @@ private:
 	float timeSinceStateChanged;
 	bool isFlipped;
 
+	Weapons ammoType;
+	uint32_t ammoAdd;
+
 	void SetState(const ActorState &newState);
 public:
 	Actor(const Level *level, const Tileset *tileset, const vec2 &location, const EventID &EventID, const Animations *anims, const float &TTL);
@@ -58,6 +62,8 @@ public:
 	GemType GetGemType() const;
 	uint8_t GetLivesAdd() const;
 	uint16_t GetPointValue() const;
+	uint8_t GetAmmoAdd() const;
+	Weapons GetAmmoType() const;
 	bool IsFlipped() const;
 	bool IsAnimationEnded() const;
 	bool AddsSparkleOnDeath() const;

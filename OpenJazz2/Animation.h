@@ -6,6 +6,13 @@
 
 #pragma region Animation Set Defines
 
+#pragma region Ammo Animations
+
+#define ANIM_SET_AMMO 0
+#define ANIM_AMMO_BOUNCER1 25
+
+#pragma endregion AmmoAnimations
+
 #pragma region Jazz Player Animations
 
 #define ANIM_SET_JAZZ 54

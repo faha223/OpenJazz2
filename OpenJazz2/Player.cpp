@@ -41,7 +41,8 @@ BlueGems(0),
 PurpleGems(0),
 Invincible(true), 
 TimeSinceMadeInvincible(0),
-SpringInfluenced(false)
+SpringInfluenced(false),
+bouncerAmmo(0)
 { }
 
 void Player::InitLives(const uint32_t lives)
@@ -265,6 +266,22 @@ uint8_t Player::AddGems(const GemType &type, const uint8_t &add)
 			break;
 	}
 	return 0;
+}
+
+uint8_t Player::AddAmmo(const Weapons &type, const uint8_t &add)
+{
+	switch (type)
+	{
+	case Bouncer:
+		bouncerAmmo += add;
+		return 0;
+	case Toaster:
+		toasterAmmo += add;
+		return 0;
+	case Freezer:
+		freezerAmmo += add;
+		break;
+	}
 }
 
 void Player::AddPoints(const uint32_t &points)
@@ -1675,6 +1692,11 @@ bool Player::CollidedWithActor(const Actor &actor)
 	if (actor.GetLivesAdd() > 0)
 	{
 		AddLives(actor.GetLivesAdd());
+		consumed = true;
+	}
+	if (actor.GetAmmoAdd() > 0)
+	{
+		AddAmmo(actor.GetAmmoType(), actor.GetAmmoAdd());
 		consumed = true;
 	}
 	if (actor.GetEventID() == RedSpring)

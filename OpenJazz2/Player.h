@@ -120,6 +120,16 @@ struct CollisionInfo
 
 #pragma endregion
 
+#pragma region Ammo Types
+enum Weapons
+{
+	Blaster,
+	Bouncer,
+	Toaster,
+	Freezer
+};
+#pragma endregion
+
 class Actor;
 
 class Player
@@ -151,6 +161,10 @@ private:
 	float timeSinceSpringInfluenced;
 	float springInfluenceTimeout;
 
+	uint32_t bouncerAmmo;
+	uint32_t toasterAmmo;
+	uint32_t freezerAmmo;
+
 	uint32_t lastTileCoord;
 	uint8_t *quad;
 
@@ -181,6 +195,7 @@ public:
 	uint8_t AddFood(const uint8_t &food);
 	uint8_t AddMoney(const uint8_t &add);
 	uint8_t AddGems(const GemType &type, const uint8_t &add);
+	uint8_t AddAmmo(const Weapons &type, const uint8_t &add);
 	bool CollidedWithActor(const Actor &actor);
 	bool IsInvisible() const;
 	void Update(const float &timeSinceLastUpdate, std::map<Control, bool> Keyboard);

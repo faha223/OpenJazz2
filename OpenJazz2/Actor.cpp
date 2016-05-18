@@ -31,8 +31,11 @@ Actor::Actor(const Level *level, const Tileset *tileset, const vec2 &location, c
 	animateOnCollision(false),
 	state(Looping),
 	timeSinceStateChanged(0),
-	isFlipped(false)
+	isFlipped(false),
+	ammoType(Blaster),
+	ammoAdd(0)
 {
+	const AnimationSet *ammo = anims->GetAnimSet(ANIM_SET_AMMO);
 	const AnimationSet *items = anims->GetAnimSet(ANIM_SET_ITEMS);
 	const AnimationSet *springs = anims->GetAnimSet(ANIM_SET_SPRINGS);
 	uint32_t tileXCoord = (uint32_t)(location.x / 32);
@@ -150,6 +153,17 @@ Actor::Actor(const Level *level, const Tileset *tileset, const vec2 &location, c
 		state = Still;
 		isFlipped = level->IsWalkable(tileXCoord - 1, tileYCoord, tileset);
 		break;
+	case BouncerAmmoPlus3:
+		anim = ammo->GetAnim(ANIM_AMMO_BOUNCER1);
+		ammoType = Bouncer;
+		ammoAdd = 3;
+		break;
+	case BouncerAmmoPlus15:
+		anim = items->GetAnim(ANIM_BOUNCE_AMMO_CRATE);
+		DoesNotFloat = true;
+		state = Still;
+	default:
+		break;
 	}
 	PeriodInitialOffset = (nextOffsetPoint++) * (ActorFloatingPeriod / 4.0f);
 	nextOffsetPoint %= 4;
@@ -172,7 +186,9 @@ Actor::Actor(const Actor &other) :
 	animateOnCollision(other.animateOnCollision),
 	state(other.state),
 	timeSinceStateChanged(other.timeSinceStateChanged),
-	isFlipped(other.isFlipped)
+	isFlipped(other.isFlipped), 
+	ammoType(other.ammoType), 
+	ammoAdd(other.ammoAdd)
 {
 	if (quad != nullptr)
 	{
@@ -201,6 +217,8 @@ Actor Actor::operator =(const Actor &other)
 	state = other.state;
 	timeSinceStateChanged = other.timeSinceStateChanged;
 	isFlipped = other.isFlipped;
+	ammoType = other.ammoType;
+	ammoAdd = other.ammoAdd;
 
 	if (quad != nullptr)
 	{
@@ -316,6 +334,16 @@ GemType Actor::GetGemType() const
 	}
 }
 
+uint8_t Actor::GetAmmoAdd() const
+{
+	return ammoAdd;
+}
+
+Weapons Actor::GetAmmoType() const
+{
+	return ammoType;
+}
+
 bool Actor::IsFlipped() const
 {
 	return isFlipped;
@@ -376,9 +404,12 @@ bool Actor::AddsSparkleOnDeath() const
 		case RedGemPlus1:
 		case PurpleGemPlus1:
 		case ExtraLive:
+		case BouncerAmmoPlus3:
+		case FreezerAmmoPlus3:
+		case ToasterAmmoPlus3:
 			return true;
 		default:
-			return isFood();	
+			return isFood();
 	}
 }
 
