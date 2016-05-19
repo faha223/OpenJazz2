@@ -5,7 +5,7 @@ using namespace std;
 
 #define DEBUG_KEYS
 
-#define SAVE_SPRITESHEETS
+//#define SAVE_SPRITESHEETS
 //#define DRAW_PLAYER_BOUNDING_BOX
 
 static string VertexShader = string("#version 330\n") +
