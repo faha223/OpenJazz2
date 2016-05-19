@@ -294,7 +294,7 @@ private:
 	ANIM_Header header;
 	std::vector<Animation> Anims;
 public:
-	AnimationSet(FILE *fi, const uint32_t *palette);
+	AnimationSet(FILE *fi, const uint32_t &animSetId, const uint32_t *palette);
 	uint32_t GetAnimCount() const;
 	const Animation *GetAnim(const uint32_t &index) const;
 	~AnimationSet();

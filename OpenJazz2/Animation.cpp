@@ -9,6 +9,8 @@ using namespace std;
 
 static uint32_t FrameCount = 0;
 
+#pragma region Palettes
+
 static uint32_t palette1[256] = {	0x00969696, 0x00010000, 0x00000100, 0x00000001, 0x00010100, 0x00010001, 0x00000101, 0x00010101, 0x00020000, 0x00020100, 0x00C343FF, 0x00BCB0AE, 0x00E0ED3F, 0x00DA99A0, 0x00322624, 0x00FEFFFF,
 									0x0000FFC7, 0x0000DF93, 0x0000BF6B, 0x0000A347, 0x0000832B, 0x00006713, 0x00003707, 0x00000C00, 0x000000FF, 0x000000E3, 0x000000C7, 0x000000AB, 0x0000008F, 0x00000073, 0x0000003F, 0x0000000C,
 									0x00FFE3BB, 0x00FFC77B, 0x00FFAB3B, 0x00FF8B00, 0x00CB6B00, 0x00974F00, 0x004F2F00, 0x000B0700, 0x0000FFFF, 0x0000C7FF, 0x000093FF, 0x00005FFF, 0x000037CB, 0x00001B9B, 0x00000753, 0x0000000B,
@@ -43,6 +45,45 @@ static uint32_t palette2[256] = {	0x00969696, 0x00010000, 0x00000100, 0x00000001
 									0x00570133, 0x005F0037, 0x0063003F, 0x006B0043, 0x0073004B, 0x007B004F, 0x00830058, 0x008B005F, 0x00930068, 0x009B006F, 0x00A30073, 0x00AB007B, 0x00B30083, 0x00BB008B, 0x00C30097, 0x00CB009F,
 									0x00C3FF00, 0x00A7E300, 0x008FC700, 0x007BAB00, 0x00638F00, 0x004F7300, 0x00FFD3F7, 0x00FFD4F7, 0x00FFD3F8, 0x00FFD4F8, 0x00FFD3F6, 0x00FFD4F6, 0x00FFD2F6, 0x00FFD2F7, 0x00FFD2F8, 0x00FFFFFE };
 
+static uint32_t palette3[256] = {	0x00000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000,
+									0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000,
+									0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000,
+									0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000,
+									0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000,
+									0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000,
+									0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000,
+									0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000, 0x7F000000,
+									0x7F010101, 0x7F030303, 0x7F050505, 0x7F070707, 0x7F090909, 0x7F0B0B0B, 0x7F0D0D0D, 0x7F0F0F0F, 0x7F111111, 0x7F131313, 0x7F151515, 0x7F171717, 0x7F191919, 0x7F1B1B1B, 0x7F1D1D1D, 0x7F1F1F1F,
+									0x7F212121, 0x7F232323, 0x7F252525, 0x7F272727, 0x7F292929, 0x7F2B2B2B, 0x7F2D2D2D, 0x7F2F2F2F, 0x7F313131, 0x7F333333, 0x7F353535, 0x7F373737, 0x7F393939, 0x7F3B3B3B, 0x7F3D3D3D, 0x7F3F3F3F,
+									0x7F414141, 0x7F434343, 0x7F454545, 0x7F474747, 0x7F494949, 0x7F4B4B4B, 0x7F4D4D4D, 0x7F4F4F4F, 0x7F515151, 0x7F535353, 0x7F555555, 0x7F575757, 0x7F595959, 0x7F5B5B5B, 0x7F5D5D5D, 0x7F5F5F5F,
+									0x7F616161, 0x7F636363, 0x7F656565, 0x7F676767, 0x7F696969, 0x7F6B6B6B, 0x7F6D6D6D, 0x7F6F6F6F, 0x7F717171, 0x7F737373, 0x7F757575, 0x7F777777, 0x7F797979, 0x7F7B7B7B, 0x7F7D7D7D, 0x7F7F7F7F,
+									0x7F818181, 0x7F838383, 0x7F858585, 0x7F878787, 0x7F898989, 0x7F8B8B8B, 0x7F8D8D8D, 0x7F8F8F8F, 0x7F919191, 0x7F939393, 0x7F959595, 0x7F979797, 0x7F999999, 0x7F9B9B9B, 0x7F9D9D9D, 0x7F9F9F9F,
+									0x7FA1A1A1, 0x7FA3A3A3, 0x7FA5A5A5, 0x7FA7A7A7, 0x7FA9A9A9, 0x7FABABAB, 0x7FADADAD, 0x7FAFAFAF, 0x7FB1B1B1, 0x7FB3B3B3, 0x7FB5B5B5, 0x7FB7B7B7, 0x7FB9B9B9, 0x7FBBBBBB, 0x7FBDBDBD, 0x7FBFBFBF,
+									0x7FC1C1C1, 0x7FC3C3C3, 0x7FC5C5C5, 0x7FC7C7C7, 0x7FC9C9C9, 0x7FCBCBCB, 0x7FCDCDCD, 0x7FCFCFCF, 0x7FD1D1D1, 0x7FD3D3D3, 0x7FD5D5D5, 0x7FD7D7D7, 0x7FD9D9D9, 0x7FDBDBDB, 0x7FDDDDDD, 0x7FDFDFDF,
+									0x7FE1E1E1, 0x7FE3E3E3, 0x7FE5E5E5, 0x7FE7E7E7, 0x7FE9E9E9, 0x7FEBEBEB, 0x7FEDEDED, 0x7FEFEFEF, 0x7FF1F1F1, 0x7FF3F3F3, 0x7FF5F5F5, 0x7FF7F7F7, 0x7FF9F9F9, 0x7FFBFBFB, 0x7FFDFDFD, 0x7FFFFFFF };
+
+#pragma endregion Palettes
+
+bool isGem(const uint32_t &animSetId, const uint32_t &animId)
+{
+	return ((animSetId == ANIM_SET_ITEMS) && (animId == ANIM_GEM));
+}
+
+uint32_t htonl(uint32_t val)
+{
+	uint32_t out = 0;
+	
+	uint8_t *arr1 = (uint8_t*)&val;
+	uint8_t *arr2 = (uint8_t*)&out;
+	
+	arr2[0] = arr1[3];
+	arr2[1] = arr1[2];
+	arr2[2] = arr1[1];
+	arr2[3] = arr1[0];
+
+	return out;
+}
+
 Animations::Animations(const char *filename)
 {	
 	FILE *fi = openFile(filename, "rb");
@@ -53,7 +94,7 @@ Animations::Animations(const char *filename)
 	for (uint32_t i = 0; i < alib.SetCount; i++)
 	{
 		fseek(fi, alib.SetAddress[i], SEEK_SET);
-		AnimationSet animSet(fi, ((i == 60) || (i == 61)) ? palette2 : palette1);
+		AnimationSet animSet(fi, i, ((i == 60) || (i == 61)) ? palette2 : palette1);
 		animSets.push_back(animSet);
 	}
 	fclose(fi);
@@ -98,7 +139,7 @@ Animations::~Animations()
 {
 }
 
-AnimationSet::AnimationSet(FILE *fi, const uint32_t *palette)
+AnimationSet::AnimationSet(FILE *fi, const uint32_t &animSetId, const uint32_t *palette)
 {
 	ReadANIMHeader(fi, &header);
 	uint8_t *compressed = new uint8_t[header.CData1];
@@ -125,6 +166,7 @@ AnimationSet::AnimationSet(FILE *fi, const uint32_t *palette)
 	delete[] compressed;
 
 	std::vector<FrameInfo> frameInfos;
+	std::vector<uint32_t> animIds;
 	int offset = 0;
 	for (int i = 0; i < header.AnimationCount; i++)
 	{
@@ -133,6 +175,7 @@ AnimationSet::AnimationSet(FILE *fi, const uint32_t *palette)
 			FrameInfo info;
 			memcpy(&info, &Data[(j*sizeof(FrameInfo)) + offset], sizeof(FrameInfo));
 			frameInfos.push_back(info);
+			animIds.push_back(i);
 		}
 		offset += 24 * animationInfos[i].FrameCount;
 	}
@@ -148,7 +191,7 @@ AnimationSet::AnimationSet(FILE *fi, const uint32_t *palette)
 	std::vector<FrameImage> frameImages;
 	for (int i = 0; i < frameInfos.size(); i++)
 	{
-		FrameImage image(&Data[frameInfos[i].ImageAddress], (header.UData3 - frameInfos[i].ImageAddress), palette);
+		FrameImage image(&Data[frameInfos[i].ImageAddress], (header.UData3 - frameInfos[i].ImageAddress), isGem(animSetId, animIds[i]) ? palette3 : palette);
 		frameImages.push_back(image);
 	}
 
@@ -232,7 +275,10 @@ FrameImage::FrameImage(uint8_t *bytes, const uint32_t length, const uint32_t *pa
 			for (int k = 0; k < (codebyte - 128); k++)
 			{
 				clip[j] = 0xFF;
-				pixels[j++] = (palette[bytes[offset++]] | alpha);
+				/*if (alpha & palette[bytes[offset + 1]])
+					pixels[j++] = (palette[bytes[offset++]]);
+				else
+					*/pixels[j++] = (palette[bytes[offset++]] | alpha);
 			}
 			if ((j%width) == 0)
 				j--;

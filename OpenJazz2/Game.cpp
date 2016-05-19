@@ -5,7 +5,7 @@ using namespace std;
 
 #define DEBUG_KEYS
 
-//#define SAVE_SPRITESHEETS
+#define SAVE_SPRITESHEETS
 //#define DRAW_PLAYER_BOUNDING_BOX
 
 static string VertexShader = string("#version 330\n") +
@@ -469,6 +469,7 @@ void Game::Run()
 
 	bool quit = false;
 	float lastUpdate = SDL_GetTicks() * 0.001f;
+	glClearColor(0, 0, 0, 0);
 	while (!quit)
 	{
 		timeElapsed = SDL_GetTicks()*0.001f;
@@ -496,8 +497,12 @@ void Game::Run()
 
 		#pragma region Draw the Layers
 
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 		for (int i = 7; i >= 0; i--)
 		{
+			glColor4f(0, 0, 0, 1);
 			if ((LayerVertexCount[i] > 0) && (player->GetHealth() > 0))
 			{
 				bool TileX = level->IsLayerTiledHorizontally(i);
@@ -571,6 +576,7 @@ void Game::Run()
 			if (i == 3)
 			{
 				glLoadIdentity();
+				
 				glBindTexture(GL_TEXTURE_2D, SpriteSheets[0]);
 				float depth = level->GetLayerZ(3);
 				int LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(3));
@@ -583,6 +589,24 @@ void Game::Run()
 					for (size_t actor_i = 0; actor_i < BackgroundActors.size(); actor_i++)
 					{
 						Actor *actor = &BackgroundActors[actor_i];
+
+						if (actor->GetEventID() == RedGemPlus1)
+						{
+							glColor4f(0.25, 0, 0.125, 0.8); // Red
+						}
+						else if (actor->GetEventID() == GreenGemPlus1)
+						{
+							glColor4f(0.125, 0.5, 0.25, 0.8); // Green
+						}
+						else if (actor->GetEventID() == BlueGemPlus1)
+						{
+							glColor4f(0, 0.25, 0.5, 0.8); // Blue
+						}
+						else
+						{
+							glColor4f(0, 0, 0, 1);
+						}
+
 						const AnimationFrame *frame = actor->GetFrame();
 						if (frame != nullptr)
 						{
@@ -1196,6 +1220,8 @@ void Game::CreateTilesheetTexture()
 			glDeleteTextures(1, &Tilesheet);
 		glGenTextures(1, &Tilesheet);
 		glBindTexture(GL_TEXTURE_2D, Tilesheet);
+		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
+		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_ADD);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -1251,6 +1277,8 @@ void Game::CreateSpritesheets()
 		glGenTextures(1, &texture);
 		SpriteSheets.push_back(texture);
 		glBindTexture(GL_TEXTURE_2D, SpriteSheets[i]);
+		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
+		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_ADD);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
