@@ -66,6 +66,9 @@
     <ClInclude Include="Actor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Shaders.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FileIO.cpp">
@@ -110,17 +113,20 @@
     <ClCompile Include="Actor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Shaders.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="zlib1.dll" />
-    <None Include="TilesheetVertex.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="TilesheetFragment.glsl">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="KeyBindings.ini" />
     <None Include="Settings.ini" />
+    <None Include="ColorizeVertex.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="ColorizeFragment.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="OpenJazz2.rc">

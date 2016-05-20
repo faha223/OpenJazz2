@@ -86,7 +86,7 @@ Actor::Actor(const Level *level, const Tileset *tileset, const vec2 &location, c
 	case BlueGemPlus1:
 	case GreenGemPlus1:
 		anim = items->GetAnim(ANIM_GEM);
-		SpeedModifier = -2.0f;
+		SpeedModifier = 2.0f;
 		break;
 	case Donut:
 		anim = items->GetAnim(ANIM_DONUT);

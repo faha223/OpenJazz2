@@ -143,3 +143,26 @@ void File::WriteAllText(string path, string text)
 		fclose(fi);
 	}
 }
+
+string File::ReadAllText(string path)
+{
+	FILE *fi = openFile(path.c_str(), "r");
+	if (fi == nullptr)
+	{
+		return string();
+	}
+
+	fseek(fi, 0, SEEK_END);
+	uint32_t length = ftell(fi);
+	fseek(fi, 0, SEEK_SET);
+
+	char *out = new char[length + 1];
+	memset(out, 0, length + 1);
+	out[length] = '\0';
+	fread(out, 1, length, fi);
+	fclose(fi);
+	string strout(out);
+	delete[] out;
+
+	return strout;
+}

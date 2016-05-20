@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "Shaders.h"
 #include <vector>
 #include <algorithm>
 using namespace std;
@@ -8,22 +9,7 @@ using namespace std;
 //#define SAVE_SPRITESHEETS
 //#define DRAW_PLAYER_BOUNDING_BOX
 
-static string VertexShader = string("#version 330\n") +
-string("uniform mat4 m_Projection;\n") +
-string("uniform mat4 m_Modelview;\n") +
-string("atribute vec3 texCoord;\n") +
-string("attribute vec3 vertex;\n") +
-string("void main() {\n") +
-string("gl_Position = m_Projection * m_Modelview * vertex;\n") +
-string("v_texCoord = texCoord.st;\n") +
-string("}");
-
-static string FragmentShader = string("#version 330\n") +
-string("uniform sampler2D texture;\n") +
-string("varying vec2 texCoord;\n") +
-string("void main() {\n") +
-string("gl_FragColor = vec4(texture2D(texture, texCoord.st).rgb, 1);\n") +
-string("}");
+GLuint colorize;
 
 enum TextAlignment
 {
@@ -228,6 +214,8 @@ void DrawLives(int lives, const SpriteCoords &coords, const Animation *font, con
 	DrawText(font, sprites, vec2(x + coords.width, y-24), Left, "x%d", lives);
 }
 
+void LoadShaders();
+
 Game::Game(int argc, char *argv[]) :
 WindowWidth(640), 
 WindowHeight(480), 
@@ -294,6 +282,8 @@ state(MainMenu)
 	//printf("Game Controller: %s\n", SDL_GameControllerNameForIndex(0));
 
 	glewInit();
+
+	LoadShaders();
 
 	//glClearColor(0.28f, 0.19f, 0.72f, 1.0f);
 	glClearColor(0, 0, 0, 1);
@@ -500,9 +490,10 @@ void Game::Run()
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+		glUseProgram(0);
 		for (int i = 7; i >= 0; i--)
 		{
-			glColor4f(0, 0, 0, 1);
+			glColor4f(1, 1, 1, 1);
 			if ((LayerVertexCount[i] > 0) && (player->GetHealth() > 0))
 			{
 				bool TileX = level->IsLayerTiledHorizontally(i);
@@ -521,6 +512,7 @@ void Game::Run()
 				{
 					glLoadIdentity();
 					glTranslatef(float(LayerXOffset), float(LayerYOffset), 0.0f);
+					//glDrawArrays(GL_QUADS, 0, LayerVertexCount[i]);
 					glDrawArrays(GL_QUADS, 0, LayerVertexCount[i]);
 				}
 				else if (TileX && TileY)
@@ -592,25 +584,29 @@ void Game::Run()
 
 						if (actor->GetEventID() == RedGemPlus1)
 						{
-							glColor4f(0.25, 0, 0.125, 0.8); // Red
+							glUseProgram(colorize);
+							glColor4f(1, 77.0f / 255.0f, 136.0f / 255.0f, 0.75); // Red
 						}
 						else if (actor->GetEventID() == GreenGemPlus1)
 						{
-							glColor4f(0.125, 0.5, 0.25, 0.8); // Green
+							glUseProgram(colorize);
+							glColor4f(76.0f / 255.0f, 1, 190.0f / 255.0f, 0.75); // Green
 						}
 						else if (actor->GetEventID() == BlueGemPlus1)
 						{
-							glColor4f(0, 0.25, 0.5, 0.8); // Blue
+							glUseProgram(colorize);
+							glColor4f(76.0f / 255.0f, 190.0f / 255.0f, 1, 0.75); // Blue
 						}
 						else
 						{
-							glColor4f(0, 0, 0, 1);
+							glUseProgram(0);
+							glColor4f(1, 1, 1, 1);
 						}
 
 						const AnimationFrame *frame = actor->GetFrame();
 						if (frame != nullptr)
 						{
-							
+
 							SpriteCoords coords = Sprites[frame->getIndex()];
 							vec2 position = actor->GetPosition();
 							vertex actorVerts[4];
@@ -653,50 +649,50 @@ void Game::Run()
 							actorVerts[0].x = position.x;
 							actorVerts[0].y = position.y;
 							actorVerts[0].z = depth;
-							actorVerts[0].s = isFlippedX ? (((float)coords.x + coords.width) / (float)SPRITESHEET_SIZE) : (((float)coords.x)/(float)SPRITESHEET_SIZE);
-							actorVerts[0].t = (((float)coords.y)/(float)SPRITESHEET_SIZE);
+							actorVerts[0].s = isFlippedX ? (((float)coords.x + coords.width) / (float)SPRITESHEET_SIZE) : (((float)coords.x) / (float)SPRITESHEET_SIZE);
+							actorVerts[0].t = (((float)coords.y) / (float)SPRITESHEET_SIZE);
 
 							actorVerts[1].x = position.x;
 							actorVerts[1].y = position.y + coords.height;
 							actorVerts[1].z = depth;
-							actorVerts[1].s = isFlippedX ? (((float)(coords.x + coords.width)) / (float)SPRITESHEET_SIZE) : (((float)(coords.x))/(float)SPRITESHEET_SIZE);
+							actorVerts[1].s = isFlippedX ? (((float)(coords.x + coords.width)) / (float)SPRITESHEET_SIZE) : (((float)(coords.x)) / (float)SPRITESHEET_SIZE);
 							actorVerts[1].t = (((float)coords.y + coords.height) / (float)SPRITESHEET_SIZE);
 
 							actorVerts[2].x = position.x + (coords.width);
 							actorVerts[2].y = position.y + coords.height;
 							actorVerts[2].z = depth;
-							actorVerts[2].s = isFlippedX ? (((float)(coords.x)) / (float)SPRITESHEET_SIZE) : (((float)(coords.x + coords.width))/(float)SPRITESHEET_SIZE);
+							actorVerts[2].s = isFlippedX ? (((float)(coords.x)) / (float)SPRITESHEET_SIZE) : (((float)(coords.x + coords.width)) / (float)SPRITESHEET_SIZE);
 							actorVerts[2].t = (((float)coords.y + coords.height) / (float)SPRITESHEET_SIZE);
 
 							actorVerts[3].x = position.x + (coords.width);
 							actorVerts[3].y = position.y;
 							actorVerts[3].z = depth;
-							actorVerts[3].s = isFlippedX ? (((float)coords.x) / (float)SPRITESHEET_SIZE) : (((float)coords.x + coords.width)/(float)SPRITESHEET_SIZE);
-							actorVerts[3].t = (((float)(coords.y))/(float)SPRITESHEET_SIZE);
+							actorVerts[3].s = isFlippedX ? (((float)coords.x) / (float)SPRITESHEET_SIZE) : (((float)coords.x + coords.width) / (float)SPRITESHEET_SIZE);
+							actorVerts[3].t = (((float)(coords.y)) / (float)SPRITESHEET_SIZE);
 
 							actor->Update(max(1.0f / 60.0f, sinceLastUpdate));
 							bool consumed = false;
-							if(actor->CheckCollision(player, Sprites))
+							if (actor->CheckCollision(player, Sprites))
 							{
 								consumed = player->CollidedWithActor(*actor);
-								
-								if(consumed)
+
+								if (consumed)
 								{
 									player->AddPoints(actor->GetPointValue());
 								}
 							}
 
-							if(consumed || actor->GetDestroyActor())
+							if (consumed || actor->GetDestroyActor())
 							{
-								if(actor->AddsSparkleOnDeath())
+								if (actor->AddsSparkleOnDeath())
 								{
 									vec2 sparklePos = actor->GetPosition();
-									ForegroundActors.push_back(Actor(level, tileset, vec2(sparklePos.x, sparklePos.y+16), Sparkle, anims, 0));
+									ForegroundActors.push_back(Actor(level, tileset, vec2(sparklePos.x, sparklePos.y + 16), Sparkle, anims, 0));
 								}
 								BackgroundActors[actor_i] = BackgroundActors.back();
 								BackgroundActors.pop_back();
 							}
-							
+
 							glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(vertex), actorVerts, GL_STREAM_DRAW);
 							glVertexPointer(3, GL_FLOAT, 5 * sizeof(float), (void*)0);
 							glTexCoordPointer(2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float)));
@@ -768,6 +764,7 @@ void Game::Run()
 					PlayerVerts[3].z = depth;
 					PlayerVerts[3].s = ((float)((!flipped) ? coord.x + coord.width : coord.x)) / (float)SPRITESHEET_SIZE;
 					PlayerVerts[3].t = ((float)coord.y + coord.height) / (float)SPRITESHEET_SIZE;
+					
 					glBindBuffer(GL_ARRAY_BUFFER, playerVBO);
 					glBufferData(GL_ARRAY_BUFFER, 20 * sizeof(float), PlayerVerts, GL_STREAM_DRAW);
 					glVertexPointer(3, GL_FLOAT, 5 * sizeof(float), (void*)0);
@@ -857,6 +854,8 @@ void Game::Run()
 
 		#pragma region Draw the Frame to the Window
 
+		glUseProgram(0);
+		glColor3f(1, 1, 1);
 		glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
 		glClear(GL_DEPTH_BUFFER_BIT);
 		glMatrixMode(GL_PROJECTION);
@@ -866,6 +865,7 @@ void Game::Run()
 		glLoadIdentity();
 
 		glBindTexture(GL_TEXTURE_2D, framebufferTexture);
+
 		glBindBuffer(GL_ARRAY_BUFFER, framebufferVBO);
 		glVertexPointer(3, GL_FLOAT, 5 * sizeof(float), (void*)0);
 		glTexCoordPointer(2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float)));
@@ -1020,6 +1020,7 @@ void Game::BuildLevelVBOs(Level *level)
 {
 	printf("Building Level VBOs\n");
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 	if (Layers[0] != 0)
 		glDeleteBuffers(8, Layers);
 	glGenBuffers(8, Layers);
@@ -1220,8 +1221,6 @@ void Game::CreateTilesheetTexture()
 			glDeleteTextures(1, &Tilesheet);
 		glGenTextures(1, &Tilesheet);
 		glBindTexture(GL_TEXTURE_2D, Tilesheet);
-		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
-		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_ADD);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -1277,8 +1276,6 @@ void Game::CreateSpritesheets()
 		glGenTextures(1, &texture);
 		SpriteSheets.push_back(texture);
 		glBindTexture(GL_TEXTURE_2D, SpriteSheets[i]);
-		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
-		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_ADD);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -1333,41 +1330,21 @@ void Game::PrepareFramebuffer()
 
 void LoadShaders()
 {
-	FILE *fi = openFile("TilesheetVertex.glsl", "rb");
-	if (fi == nullptr)
+	string vertexShaderSource = File::ReadAllText("ColorizeVertex.glsl");
+	string fragmentShaderSource = File::ReadAllText("ColorizeFragment.glsl");
+	if (vertexShaderSource.length() == 0)
 	{
-		printf("Error opening vertex shader\n");
+		fprintf(stderr, "Unable to read the vertex shader\n");
 		return;
 	}
 
-	fseek(fi, 0, SEEK_END);
-	uint32_t length = ftell(fi);
-	fseek(fi, 0, SEEK_SET);
-
-	char *vertexShaderSource = new char[length + 1];
-	vertexShaderSource[length] = '\0';
-	fread(vertexShaderSource, 1, length, fi);
-	fclose(fi);
-
-
-	fi = openFile("TilesheetVertex.glsl", "rb");
-	if (fi == nullptr)
+	if (fragmentShaderSource.length() == 0)
 	{
-		printf("Error opening vertex shader\n");
+		fprintf(stderr, "Unable to read the fragment shader\n");
 		return;
 	}
 
-	fseek(fi, 0, SEEK_END);
-	length = ftell(fi);
-	fseek(fi, 0, SEEK_SET);
-
-	char *fragmentShaderSource = new char[length + 1];
-	fragmentShaderSource[length] = '\0';
-	fread(fragmentShaderSource, 1, length, fi);
-	fclose(fi);
-
-	delete[] vertexShaderSource;
-	delete[] fragmentShaderSource;
+	colorize = Shaders::CompileProgram(vertexShaderSource, fragmentShaderSource);
 }
 
 bool _startsWith(const char *a, const char *b)

@@ -93,6 +93,7 @@
     <ClInclude Include="OpenJazz2.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="Shaders.h" />
     <ClInclude Include="Structures.h" />
     <ClInclude Include="Tileset.h" />
   </ItemGroup>
@@ -110,21 +111,17 @@
     <ClCompile Include="Mixer.cpp" />
     <ClCompile Include="Music.cpp" />
     <ClCompile Include="Player.cpp" />
+    <ClCompile Include="Shaders.cpp" />
     <ClCompile Include="Tileset.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="ColorizeFragment.glsl" />
+    <None Include="ColorizeVertex.glsl" />
     <None Include="KeyBindings.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Settings.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="TilesheetFragment.glsl">
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</DeploymentContent>
-    </None>
-    <None Include="TilesheetVertex.glsl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</DeploymentContent>
     </None>
     <None Include="zlib1.dll">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>

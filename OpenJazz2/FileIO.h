@@ -14,6 +14,7 @@ inline FILE* openFile(const char *filename, const char *mode)
 	fopen_s(&fi, filename, mode);
 	return fi;
 }
+
 #define SwapBytes16 _byteswap_ushort
 #define SwapBytes32 _byteswap_ulong
 #define SwapBytes64 _byteswap_uint64

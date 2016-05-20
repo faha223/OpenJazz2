@@ -20,6 +20,7 @@ class File
 {
 public:
 	static void WriteAllText(std::string path, std::string text);
+	static std::string ReadAllText(std::string path);
 };
 
 #endif
