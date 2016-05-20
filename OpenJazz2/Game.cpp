@@ -1,5 +1,6 @@
 #include "Game.h"
 #include "Shaders.h"
+#include "System.h"
 #include <vector>
 #include <algorithm>
 using namespace std;
@@ -9,7 +10,7 @@ using namespace std;
 //#define SAVE_SPRITESHEETS
 //#define DRAW_PLAYER_BOUNDING_BOX
 
-GLuint colorize;
+GLuint defaultShader, colorizeShader;
 
 enum TextAlignment
 {
@@ -490,10 +491,10 @@ void Game::Run()
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-		glUseProgram(0);
 		for (int i = 7; i >= 0; i--)
 		{
 			glColor4f(1, 1, 1, 1);
+			glUseProgram(defaultShader);
 			if ((LayerVertexCount[i] > 0) && (player->GetHealth() > 0))
 			{
 				bool TileX = level->IsLayerTiledHorizontally(i);
@@ -584,22 +585,22 @@ void Game::Run()
 
 						if (actor->GetEventID() == RedGemPlus1)
 						{
-							glUseProgram(colorize);
+							glUseProgram(colorizeShader);
 							glColor4f(1, 77.0f / 255.0f, 136.0f / 255.0f, 0.75); // Red
 						}
 						else if (actor->GetEventID() == GreenGemPlus1)
 						{
-							glUseProgram(colorize);
+							glUseProgram(colorizeShader);
 							glColor4f(76.0f / 255.0f, 1, 190.0f / 255.0f, 0.75); // Green
 						}
 						else if (actor->GetEventID() == BlueGemPlus1)
 						{
-							glUseProgram(colorize);
+							glUseProgram(colorizeShader);
 							glColor4f(76.0f / 255.0f, 190.0f / 255.0f, 1, 0.75); // Blue
 						}
 						else
 						{
-							glUseProgram(0);
+							glUseProgram(defaultShader);
 							glColor4f(1, 1, 1, 1);
 						}
 
@@ -703,6 +704,7 @@ void Game::Run()
 
 				if (!player->IsInvisible())
 				{
+					glUseProgram(defaultShader);
 					const AnimationFrame *frame = player->GetSprite();
 					vec2 Hotspot = frame->getHotSpot();
 
@@ -774,6 +776,7 @@ void Game::Run()
 
 				if (player->GetHealth() > 0)
 				{
+					glUseProgram(defaultShader);
 					glBindBuffer(GL_ARRAY_BUFFER, ActorsVBO);
 					for (size_t actor_i = 0; actor_i < ForegroundActors.size(); actor_i++)
 					{
@@ -836,6 +839,7 @@ void Game::Run()
 		#pragma region Draw the HUD
 
 		glLoadIdentity();
+		glUseProgram(defaultShader);
 		glBindTexture(GL_TEXTURE_2D, SpriteSheets[0]);
 		float depth = level->GetLayerZ(3);
 		int LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(3));
@@ -854,7 +858,7 @@ void Game::Run()
 
 		#pragma region Draw the Frame to the Window
 
-		glUseProgram(0);
+		glUseProgram(defaultShader);
 		glColor3f(1, 1, 1);
 		glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
 		glClear(GL_DEPTH_BUFFER_BIT);
@@ -1330,21 +1334,45 @@ void Game::PrepareFramebuffer()
 
 void LoadShaders()
 {
-	string vertexShaderSource = File::ReadAllText("ColorizeVertex.glsl");
-	string fragmentShaderSource = File::ReadAllText("ColorizeFragment.glsl");
-	if (vertexShaderSource.length() == 0)
+	string vertexShaderSource = File::ReadAllText("GenericVertex.glsl");
+	string fragmentShaderSource = File::ReadAllText("GenericFragment.glsl");
+	string colorizeFragmentShaderSource = File::ReadAllText("ColorizeFragment.glsl");
+
+	GLuint defaultVertexShader = 0, defaultFragmentShader = 0, colorizeFragmentShader = 0;
+
+	string log = Shaders::CompileShader(GL_VERTEX_SHADER, vertexShaderSource, defaultVertexShader);
+	if (log.length() > 0)
 	{
-		fprintf(stderr, "Unable to read the vertex shader\n");
+		System::LogError("Error compiling default vertex shader:\n%s\n", log.c_str());
 		return;
 	}
 
-	if (fragmentShaderSource.length() == 0)
+	log = Shaders::CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource, defaultFragmentShader);
+	if (log.length() > 0)
 	{
-		fprintf(stderr, "Unable to read the fragment shader\n");
+		System::LogError("Error compiling default fragment shader:\n%s\n", log.c_str());
 		return;
 	}
 
-	colorize = Shaders::CompileProgram(vertexShaderSource, fragmentShaderSource);
+	log = Shaders::CompileShader(GL_FRAGMENT_SHADER, colorizeFragmentShaderSource, colorizeFragmentShader);
+	if (log.length() > 0)
+	{
+		System::LogError("Error compiling colorize vertex shader:\n%s\n", log.c_str());
+		return;
+	}
+
+	log = Shaders::LinkProgram(defaultVertexShader, defaultFragmentShader, defaultShader);
+	if (log.length() > 0)
+	{
+		System::LogError("Error linking default shader:\n%s\n", log.c_str());
+	}
+
+	log = Shaders::LinkProgram(defaultVertexShader, colorizeFragmentShader, colorizeShader);
+	if (log.length() > 0)
+	{
+		System::LogError("Error linking colorize shader:\n%s\n", log.c_str());
+	}
+
 }
 
 bool _startsWith(const char *a, const char *b)

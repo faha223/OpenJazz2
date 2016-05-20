@@ -95,6 +95,7 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="Shaders.h" />
     <ClInclude Include="Structures.h" />
+    <ClInclude Include="System.h" />
     <ClInclude Include="Tileset.h" />
   </ItemGroup>
   <ItemGroup>
@@ -112,11 +113,13 @@
     <ClCompile Include="Music.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="Shaders.cpp" />
+    <ClCompile Include="System.cpp" />
     <ClCompile Include="Tileset.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ColorizeFragment.glsl" />
-    <None Include="ColorizeVertex.glsl" />
+    <None Include="GenericFragment.glsl" />
+    <None Include="GenericVertex.glsl" />
     <None Include="KeyBindings.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

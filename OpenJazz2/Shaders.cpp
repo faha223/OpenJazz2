@@ -1,30 +1,8 @@
 #include "Shaders.h"
-#include <algorithm>
-
-#if defined(_WIN32) || defined(_WIN64)
-#include <Windows.h>
-#endif
-
-void LogError(const char *format, ...)
-{
-	if (format == nullptr)
-		return;
-	char buffer[1024];
-	va_list ap;
-	va_start(ap, format);
-	vsprintf_s(buffer, 1023, format, ap);
-	va_end(ap);
-
-#if defined(_WIN32)|| defined(_WIN64)
-	OutputDebugStringA(buffer);
-#else
-	fprintf(stderr, buffer);
-#endif
-}
 
 using namespace std;
 
-string CompileShader(GLenum type, const string &shaderSource, GLuint &out)
+string Shaders::CompileShader(GLenum type, const string &shaderSource, GLuint &out)
 {
 	out = glCreateShader(type);
 	string log;
@@ -51,31 +29,16 @@ string CompileShader(GLenum type, const string &shaderSource, GLuint &out)
 	return log;
 }
 
-GLuint Shaders::CompileProgram(string vertexShaderSource, string fragmentShaderSource)
+string Shaders::LinkProgram(const GLuint &vertexShader, const GLuint &fragmentShader, GLuint &prog)
 {
-	GLuint vs = 0;
-	GLuint fs = 0;
-	string log = CompileShader(GL_VERTEX_SHADER, vertexShaderSource, vs);
-	if (log.length() > 0)
-	{
-		LogError("Error compiling vertex shader:\n%s\n", log.c_str());
-		return 0;
-	}
-	log = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource, fs);
-	if (log.length() > 0)
-	{
-		LogError("Error compiling fragment shader:\n%s\n", log.c_str());
-		return 0;
-	}
-
-	GLuint prog = glCreateProgram();
-	glAttachShader(prog, vs);
-	glAttachShader(prog, fs);
-
+	prog = glCreateProgram();
+	glAttachShader(prog, vertexShader);
+	glAttachShader(prog, fragmentShader);
 	glLinkProgram(prog);
 
 	GLint blen = 0;
 	glGetShaderiv(prog, GL_INFO_LOG_LENGTH, &blen);
+	string log;
 	if (blen > 1)
 	{
 		GLsizei slen = 0;
@@ -86,10 +49,6 @@ GLuint Shaders::CompileProgram(string vertexShaderSource, string fragmentShaderS
 		glDeleteProgram(prog);
 		prog = 0;
 	}
-	if (log.length() > 0)
-	{
-		fprintf(stderr, "Error linking program: %s\n", log.c_str());
-	}
 
-	return prog;
+	return log;
 }

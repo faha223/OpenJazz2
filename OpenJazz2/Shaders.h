@@ -9,7 +9,8 @@
 class Shaders
 {
 public:
-	static GLuint CompileProgram(std::string vertexShaderSource, std::string fragmentShaderSource);
+	static std::string CompileShader(GLenum type, const std::string &shaderSource, GLuint &out);
+	static std::string LinkProgram(const GLuint &vertexShader, const GLuint &fragmentShader, GLuint &program);
 };
 
 #endif
