@@ -216,6 +216,7 @@ void DrawLives(int lives, const SpriteCoords &coords, const Animation *font, con
 }
 
 void LoadShaders();
+GLuint GenerateTexture(SDL_Surface *surface);
 
 Game::Game(int argc, char *argv[]) :
 WindowWidth(640), 
@@ -229,8 +230,9 @@ player(nullptr),
 Tilesheet(0),
 state(MainMenu)
 {
-	string LevelFile = "";
+	LevelFile = "";
 	string EpisodeFile = "";
+
 	for (int i = 1; i < argc; i++)
 	{
 		string arg = argv[i];
@@ -241,14 +243,10 @@ state(MainMenu)
 		else if (arg.substr(arg.length() - 3) == string("j2l"))
 			LevelFile = arg;
 	}
-	Layers[0] = 0;
-	Layers[1] = 0;
-	Layers[2] = 0;
-	Layers[3] = 0;
-	Layers[4] = 0;
-	Layers[5] = 0;
-	Layers[6] = 0;
-	Layers[7] = 0;
+
+	for (auto i = 0; i < 8; i++)
+		Layers[i] = 0;
+
 	auto now = std::chrono::system_clock::now();
 	auto duration = now.time_since_epoch();
 	startTime = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() * 0.001f;
@@ -323,6 +321,12 @@ state(MainMenu)
 			EpisodeFile = Files[0];
 	}
 	EpisodeFile = Path::Combine(Path, Episode);
+
+	if (LevelFile.length() > 0)
+	{
+		LevelFile = Path::Combine(Path, LevelFile);
+	}
+
 	anims = new Animations(Path::Combine(Path, "Anims.j2a").c_str());
 #ifdef DUMP_ANIMATIONS
 	anims.DumpToDisk(DumpPath);
@@ -705,6 +709,7 @@ void Game::Run()
 				if (!player->IsInvisible())
 				{
 					glUseProgram(defaultShader);
+					glColor4f(1, 1, 1, 1);
 					const AnimationFrame *frame = player->GetSprite();
 					vec2 Hotspot = frame->getHotSpot();
 
@@ -1029,6 +1034,8 @@ void Game::BuildLevelVBOs(Level *level)
 		glDeleteBuffers(8, Layers);
 	glGenBuffers(8, Layers);
 	
+	float px = 1.0f / 4096.0f;
+	float tile = 1.0f / 32.0f;
 	for (int layer = 0; layer < 8; layer++)
 	{
 		vector<vertex> layerVertices;
@@ -1063,25 +1070,25 @@ void Game::BuildLevelVBOs(Level *level)
 							v4.z = (float)layerZ;
 							if (tileInfo.flipped)
 							{
-								v1.s = (tileInfo.index % 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-								v1.t = (tileInfo.index / 32) / 32.0f + (1.0f / 4096.0f);
-								v2.s = (tileInfo.index % 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-								v2.t = (tileInfo.index / 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-								v3.s = (tileInfo.index % 32) / 32.0f + (1.0f / 4096.0f);
-								v3.t = (tileInfo.index / 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-								v4.s = (tileInfo.index % 32) / 32.0f + (1.0f / 4096.0f);
-								v4.t = (tileInfo.index / 32) / 32.0f + (1.0f / 4096.0f);
+								v1.s = (tileInfo.index % 32) / 32.0f + tile - px;
+								v1.t = (tileInfo.index / 32) / 32.0f + px;
+								v2.s = (tileInfo.index % 32) / 32.0f + tile - px;
+								v2.t = (tileInfo.index / 32) / 32.0f + tile - px;
+								v3.s = (tileInfo.index % 32) / 32.0f + px;
+								v3.t = (tileInfo.index / 32) / 32.0f + tile - px;
+								v4.s = (tileInfo.index % 32) / 32.0f + px;
+								v4.t = (tileInfo.index / 32) / 32.0f + px;
 							}
 							else
 							{
-								v1.s = (tileInfo.index % 32) / 32.0f + (1.0f / 4096.0f);
-								v1.t = (tileInfo.index / 32) / 32.0f + (1.0f / 4096.0f);
-								v2.s = (tileInfo.index % 32) / 32.0f + (1.0f / 4096.0f);
-								v2.t = (tileInfo.index / 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-								v3.s = (tileInfo.index % 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-								v3.t = (tileInfo.index / 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-								v4.s = (tileInfo.index % 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-								v4.t = (tileInfo.index / 32) / 32.0f + (1.0f / 4096.0f);
+								v1.s = (tileInfo.index % 32) / 32.0f + px;
+								v1.t = (tileInfo.index / 32) / 32.0f + px;
+								v2.s = (tileInfo.index % 32) / 32.0f + px;
+								v2.t = (tileInfo.index / 32) / 32.0f + tile - px;
+								v3.s = (tileInfo.index % 32) / 32.0f + tile - px;
+								v3.t = (tileInfo.index / 32) / 32.0f + tile - px;
+								v4.s = (tileInfo.index % 32) / 32.0f + tile - px;
+								v4.t = (tileInfo.index / 32) / 32.0f + px;
 							}
 							layerVertices.push_back(v1);
 							layerVertices.push_back(v2);
@@ -1117,6 +1124,8 @@ void Game::RecalculateLevelVBOs(Level *level, const float &timeElapsed)
 			float x, y, z;
 			float s, t;
 		};
+		float px = 1.0f / 4096.0f;
+		float tile = 1.0f / 32.0f;
 		vector<vertex> layerVertices;
 		if (level->GetTileCount(layer) > 0)
 		{
@@ -1152,25 +1161,25 @@ void Game::RecalculateLevelVBOs(Level *level, const float &timeElapsed)
 								v4.z = (float)layerZ;
 								if (tileInfo.flipped)
 								{
-									v1.s = (tileInfo.index % 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-									v1.t = (tileInfo.index / 32) / 32.0f + (1.0f / 4096.0f);
-									v2.s = (tileInfo.index % 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-									v2.t = (tileInfo.index / 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-									v3.s = (tileInfo.index % 32) / 32.0f + (1.0f / 4096.0f);
-									v3.t = (tileInfo.index / 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-									v4.s = (tileInfo.index % 32) / 32.0f + (1.0f / 4096.0f);
-									v4.t = (tileInfo.index / 32) / 32.0f + (1.0f / 4096.0f);
+									v1.s = (tileInfo.index % 32) / 32.0f + tile - px;
+									v1.t = (tileInfo.index / 32) / 32.0f + px;
+									v2.s = (tileInfo.index % 32) / 32.0f + tile - px;
+									v2.t = (tileInfo.index / 32) / 32.0f + tile - px;
+									v3.s = (tileInfo.index % 32) / 32.0f + px;
+									v3.t = (tileInfo.index / 32) / 32.0f + tile - px;
+									v4.s = (tileInfo.index % 32) / 32.0f + px;
+									v4.t = (tileInfo.index / 32) / 32.0f + px;
 								}
 								else
 								{
-									v1.s = (tileInfo.index % 32) / 32.0f + (1.0f / 4096.0f);
-									v1.t = (tileInfo.index / 32) / 32.0f + (1.0f / 4096.0f);
-									v2.s = (tileInfo.index % 32) / 32.0f + (1.0f / 4096.0f);
-									v2.t = (tileInfo.index / 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-									v3.s = (tileInfo.index % 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-									v3.t = (tileInfo.index / 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-									v4.s = (tileInfo.index % 32) / 32.0f + (1.0f / 32.0f) - (1.0f / 4096.0f);
-									v4.t = (tileInfo.index / 32) / 32.0f + (1.0f / 4096.0f);
+									v1.s = (tileInfo.index % 32) / 32.0f + px;
+									v1.t = (tileInfo.index / 32) / 32.0f + px;
+									v2.s = (tileInfo.index % 32) / 32.0f + px;
+									v2.t = (tileInfo.index / 32) / 32.0f + tile - px;
+									v3.s = (tileInfo.index % 32) / 32.0f + tile - px;
+									v3.t = (tileInfo.index / 32) / 32.0f + tile - px;
+									v4.s = (tileInfo.index % 32) / 32.0f + tile - px;
+									v4.t = (tileInfo.index / 32) / 32.0f + px;
 								}
 								layerVertices.push_back(v1);
 								layerVertices.push_back(v2);
@@ -1223,14 +1232,8 @@ void Game::CreateTilesheetTexture()
 		}
 		if (Tilesheet != 0)
 			glDeleteTextures(1, &Tilesheet);
-		glGenTextures(1, &Tilesheet);
-		glBindTexture(GL_TEXTURE_2D, Tilesheet);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, TileSheet->w, TileSheet->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, TileSheet->pixels);
-		glGenerateMipmap(GL_TEXTURE_2D);
+
+		Tilesheet = GenerateTexture(TileSheet);
 		SDL_FreeSurface(TileSheet);
 		TileSheet = nullptr;
 	}
@@ -1276,18 +1279,11 @@ void Game::CreateSpritesheets()
 		sprintf_s(buffer, 255, "spritesheet-%02lu.bmp", i);
 		SDL_SaveBMP(spritesheet, Path::Combine(DumpPath, buffer).c_str());
 #endif
-		GLuint texture;
-		glGenTextures(1, &texture);
-		SpriteSheets.push_back(texture);
-		glBindTexture(GL_TEXTURE_2D, SpriteSheets[i]);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, spritesheet->w, spritesheet->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, spritesheet->pixels);
-		glGenerateMipmap(GL_TEXTURE_2D);
+		SpriteSheets.push_back(GenerateTexture(spritesheet));
 		SDL_FreeSurface(spritesheet);
+		spritesheetSurfaces[i] = nullptr;
 	}
+	spritesheetSurfaces.clear();
 }
 
 void Game::PrepareFramebuffer()
@@ -1375,6 +1371,20 @@ void LoadShaders()
 
 }
 
+GLuint GenerateTexture(SDL_Surface *surface)
+{
+	GLuint texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	return texture;
+}
+
 bool _startsWith(const char *a, const char *b)
 {
 	if (strlen(a) < strlen(b))
@@ -1388,6 +1398,7 @@ bool _startsWith(const char *a, const char *b)
 void Game::LoadSettings()
 {
 	Episode = "Prince.j2e"; // Set a default
+	LevelFile = "";
 
 	FILE *fi = openFile("Settings.ini", "r");
 	if (fi != nullptr)
@@ -1399,7 +1410,7 @@ void Game::LoadSettings()
 			int param = 0;
 			memset(buffer, 0, 256);
 			fgets(buffer, 256, fi);
-			if (buffer[strlen(buffer) - 1 == '\n'])
+			if (buffer[strlen(buffer) - 1] == '\n')
 				buffer[strlen(buffer) - 1] = '\0';
 			memset(sparam, 0, 256);
 			if (strlen(buffer))
@@ -1418,6 +1429,8 @@ void Game::LoadSettings()
 					DumpPath = &buffer[8];
 				else if (_startsWith(buffer, "Episode="))
 					Episode = &buffer[8];
+				else if (_startsWith(buffer, "Level="))
+					LevelFile = &buffer[6];
 			}
 		}
 		fclose(fi);
