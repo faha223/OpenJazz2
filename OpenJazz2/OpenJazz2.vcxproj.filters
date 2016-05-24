@@ -130,10 +130,10 @@
     <None Include="ColorizeFragment.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="GenericVertex.glsl">
+    <None Include="GenericFragment.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="GenericFragment.glsl">
+    <None Include="GenericVertex.glsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

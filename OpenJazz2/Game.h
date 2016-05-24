@@ -51,10 +51,12 @@ private:
 	GameState state;
 	GLuint Tilesheet;
 	GLuint Layers[8];
+	GLuint LayerVAOs[8];
 	size_t LayerVertexCount[8];
 	GLuint framebuffer;
 	GLuint framebufferTexture;
 	GLuint framebufferVBO;
+	GLuint framebufferVAO;
 	std::string Path;
 	std::string DumpPath;
 	std::string Episode;
@@ -62,7 +64,9 @@ private:
 	std::map<uint32_t, SpriteCoords> Sprites;
 	std::vector<GLuint> SpriteSheets;
 	GLuint playerVBO;
+	GLuint playerVAO;
 	GLuint ActorsVBO;
+	GLuint ActorsVAO;
 	std::vector<uint32_t> LayerTiles[8];
 	float startTime;
 	float timeElapsed = 0.0f;

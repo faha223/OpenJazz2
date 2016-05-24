@@ -101,3 +101,46 @@ Rect Rect::operator =(const Rect &r)
 	h = r.h;
 	return *this;
 }
+
+mat4::mat4()
+{
+	for (auto i = 0; i < 4; i++)
+		for(auto j = 0; j < 4; j++)
+		{
+			data[4 * i + j] = (i == j) ? 1 : 0;
+		}
+}
+
+mat4::~mat4()
+{
+
+}
+
+mat4 mat4::translate(const float &x, const float &y, const float &z)
+{
+	mat4 m;
+	m.data[12] = x;
+	m.data[13] = y;
+	m.data[14] = z;
+	return m;
+}
+
+mat4 mat4::ortho(const float &left, const float &right, const float &bottom, const float &top, const float &near, const float &far)
+{
+	float width = right - left;
+	float height = bottom - top;
+	mat4 m;
+	m.data[0] = 2.0f / (right - left);
+	m.data[12] = -(right + left) / (right - left);
+	m.data[5] = 2.0f / (top - bottom);
+	m.data[13] = -(top + bottom) / (top - bottom);
+	m.data[10] = -2.0f / (far - near);
+	m.data[14] = -(far + near) / (far - near);
+	return m;
+}
+
+void mat4::getData(float *buffer) const
+{
+	for (auto i = 0; i < 16; i++)
+		buffer[i] = data[i];
+}

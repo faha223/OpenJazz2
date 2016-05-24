@@ -1,10 +1,18 @@
-#version 110
+#version 400
 
-varying vec4 color;
+uniform mat4 modelview;
+uniform mat4 projection;
+uniform vec4 VertexColor;
+
+layout (location = 0) in vec3 VertexPosition;
+layout (location = 1) in vec2 VertexTexcoord;
+
+out vec4 color;
+out vec2 texcoord;
 
 void main()
 {
-	gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-	gl_TexCoord[0] = gl_MultiTexCoord0;
-	color = gl_Color;
+	gl_Position = projection * modelview * vec4(VertexPosition, 1.0);
+	color = VertexColor;
+	texcoord = VertexTexcoord;
 }

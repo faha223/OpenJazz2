@@ -52,4 +52,18 @@ public:
 	Rect operator =(const Rect &r);
 };
 
+class mat4
+{
+private:
+	float data[16];
+public:
+	mat4();
+	~mat4();
+	static mat4 translate(const float &x, const float &y, const float &z);
+	static mat4 ortho(const float &left, const float &right, const float &bottom, const float &top, const float &near, const float &far);
+	void getData(float *buffer) const;
+};
+
+mat4 operator *(const mat4 &a, const mat4 &b);
+
 #endif

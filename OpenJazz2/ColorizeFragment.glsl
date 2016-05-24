@@ -1,8 +1,11 @@
-#version 110
+#version 400
 
-uniform sampler2D Texture0;
+uniform sampler2D texture;
 
-varying vec4 color;
+in vec4 color;
+in vec2 texcoord;
+
+out vec4 FragColor;
 
 vec3 rgb2hcv(vec3 rgb)
 {
@@ -41,10 +44,10 @@ vec3 hsl2rgb(vec3 hsl) {
 
 void main()
 {
-	vec4 base = texture2D(Texture0, gl_TexCoord[0].xy);
+	vec4 base = texture2D(texture, texcoord);
 	vec3 hsv = rgb2hsl(base.xyz);
 	vec3 col = rgb2hsl(color.xyz);
 	vec3 rgb = hsl2rgb(vec3(col.x, col.y, hsv.z * (255.0/195.0)));
 
-	gl_FragColor = vec4(rgb, base.a * color.a);
+	FragColor = vec4(rgb, base.a * color.a);
 }
