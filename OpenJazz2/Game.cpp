@@ -521,8 +521,8 @@ void Game::Run()
 		SDL_SetWindowTitle(window, buffer);
 	}
 
+	// Generate a projection matrix for rendering to the framebuffer, a projection matrix for rendering the framebuffer to the screen, and an identity matrix
 	float renderingProjectionMatrix[16], framebufferProjectionMatrix[16], identityMatrix[16];
-
 	mat4().getData(identityMatrix);
 	mat4::ortho(0.0f, (float)WindowWidth, (float)WindowHeight - (float)(WindowHeight - 480), -(float)(WindowHeight - 480), 500.0f, -500.0f).getData(renderingProjectionMatrix);
 	mat4::ortho(0, 1, 1, 0, -500, 500).getData(framebufferProjectionMatrix);
@@ -637,6 +637,8 @@ void Game::Run()
 					}
 				}
 			}
+
+			#pragma region Draw the Sprite Layer
 
 			if (i == 3)
 			{
@@ -926,6 +928,8 @@ void Game::Run()
 
 				glBindTexture(GL_TEXTURE_2D, Tilesheet);
 			}
+
+			#pragma endregion Draw the Sprite Layer
 		}
 
 		#pragma endregion Draw the Layers
@@ -988,6 +992,8 @@ void Game::Run()
 
 		#pragma endregion Draw the Frame to the Window
 
+		#pragma region Update Control State
+
 		SDL_Event e;
 		while (SDL_PollEvent(&e))
 		{
@@ -1049,6 +1055,10 @@ void Game::Run()
 		for (multimap<Control, uint32_t>::iterator i = JoyBindings.begin(); i != JoyBindings.end(); i++)
 			ControlState[RUN] |= ((i->first == RUN) ? joystick[i->second] : false);
 
+		#pragma endregion Update Control State
+
+		#pragma region Update Player
+
 		player->Update(max(1.0f / 60.0f, sinceLastUpdate), ControlState);
 		if(player->GetState() == BUTTSTOMP)
 		{
@@ -1079,24 +1089,7 @@ void Game::Run()
 					level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord - 1) + tileXCoord, 1);
 			}
 		}
-		
-		if (sinceLastUpdate < (1.0f / 60.0f))
-		{
-			SDL_Delay((uint32_t)(1000 * ((1.0f / 60.0f) - sinceLastUpdate)));
-		}
-
-		for (multimap<Control, uint32_t>::iterator i = KeyBindings.find(MENU); i != KeyBindings.end(); i++)
-		{
-			if (keyboard[i->second])
-				quit = true;
-		}
-		for (multimap<Control, uint32_t>::iterator i = JoyBindings.find(MENU); i != JoyBindings.end(); i++)
-		{
-			if (joystick[i->second])
-				quit = true;
-		}
-
-		if (player->GetState() == DEAD)
+		else if (player->GetState() == DEAD)
 		{
 			if (player->GetLives() == 0)
 			{
@@ -1108,11 +1101,38 @@ void Game::Run()
 				RestartLevel();
 			}
 		}
-
-		if(player->GetState() == LEVEL_ENDED)
+		else if (player->GetState() == LEVEL_ENDED)
 		{
 			GotoNextLevel();
 		}
+
+
+		#pragma endregion Update Player
+		
+		#pragma region Sleep the rest of the frame interval
+
+		if (sinceLastUpdate < (1.0f / 60.0f))
+		{
+			SDL_Delay((uint32_t)(1000 * ((1.0f / 60.0f) - sinceLastUpdate)));
+		}
+
+		#pragma endregion Sleep the rest of the frame interval
+
+		#pragma region Check if player is trying to close the game
+
+		for (auto i = KeyBindings.find(MENU); i != KeyBindings.end(); i++)
+		{
+			if (keyboard[i->second])
+				quit = true;
+		}
+		for (auto i = JoyBindings.find(MENU); i != JoyBindings.end(); i++)
+		{
+			if (joystick[i->second])
+				quit = true;
+		}
+
+		#pragma endregion Check if the player is trying to close the game
+
 
 #ifdef DEBUG_KEYS
 		if (keyboard[SDLK_F1])
