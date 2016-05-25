@@ -1,8 +1,8 @@
 #include "Game.h"
 #include "Shaders.h"
-#include "System.h"
 #include <vector>
 #include <algorithm>
+#include <cassert>
 using namespace std;
 
 #define DEBUG_KEYS
@@ -34,16 +34,6 @@ void SetupVertexAttribArrays()
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 }
 
-void LogAllGLErrors()
-{
-	GLuint error = glGetError();
-	while (error != 0)
-	{
-		System::LogError("OpenGL Error: %d\n", error);
-		error = glGetError();
-	}
-}
-
 void prepareHUD()
 {
 	if (hudVAO == 0)
@@ -52,10 +42,7 @@ void prepareHUD()
 		glBindBuffer(GL_ARRAY_BUFFER, hudVBO);
 		glGenVertexArrays(1, &hudVAO);
 		glBindVertexArray(hudVAO);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+		SetupVertexAttribArrays();
 	}
 }
 
@@ -559,14 +546,14 @@ void Game::Run()
 		{
 			float modelview[16];
 			glUseProgram(defaultShader);
-			
+
 			GLuint modelviewLocation = glGetUniformLocation(defaultShader, "modelview");
 			GLuint projectionLocation = glGetUniformLocation(defaultShader, "projection");
 			GLuint colorLocation = glGetUniformLocation(defaultShader, "VertexColor");
 			GLuint textureLocation = glGetUniformLocation(defaultShader, "texture");
 
 			glUniform4f(colorLocation, 1, 1, 1, 1);
-			glUniform1ui(textureLocation, Tilesheet);
+			glUniform1i(textureLocation, 0);
 			glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, renderingProjectionMatrix);
 
 			if ((LayerVertexCount[i] > 0) && (player->GetHealth() > 0))
@@ -582,6 +569,7 @@ void Game::Run()
 
 				glBindBuffer(GL_ARRAY_BUFFER, Layers[i]);
 				glBindVertexArray(LayerVAOs[i]);
+				
 				if (!TileX && !TileY)
 				{
 					mat4::translate(float(LayerXOffset), float(LayerYOffset), 0.0f).getData(modelview);
@@ -690,7 +678,7 @@ void Game::Run()
 						glUniform4fv(colorLocation, 1, currentColor);
 						glUniformMatrix4fv(modelviewLocation, 1, GL_FALSE, modelview);
 						glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, renderingProjectionMatrix);
-						glUniform1ui(textureLocation, SpriteSheets[0]);
+						glUniform1i(textureLocation, 0);
 
 						const AnimationFrame *frame = actor->GetFrame();
 						if (frame != nullptr)
@@ -863,7 +851,7 @@ void Game::Run()
 					glUniform4f(colorLocation, 1, 1, 1, 1);
 					glUniformMatrix4fv(modelviewLocation, 1, GL_FALSE, modelview);
 					glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, renderingProjectionMatrix);
-					glUniform1ui(textureLocation, SpriteSheets[0]);
+					glUniform1i(textureLocation, 0);
 
 					glBindVertexArray(playerVAO);
 					glBindBuffer(GL_ARRAY_BUFFER, playerVBO);
@@ -954,7 +942,7 @@ void Game::Run()
 		glUniformMatrix4fv(modelviewLocation, 1, GL_FALSE, modelview);
 		glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, renderingProjectionMatrix);
 		glUniform4f(colorLocation, 1, 1, 1, 1);
-		glUniform1ui(textureLocation, SpriteSheets[0]);
+		glUniform1i(textureLocation, 0);
 
 		DrawText(anims->GetAnimSet(ANIM_SET_MENU)->GetAnim(ANIM_SPRITEFONT_LARGE), &Sprites, vec2(7, 2), Left, "%07d", player->GetScore());
 		
@@ -984,7 +972,7 @@ void Game::Run()
 		glUniform4f(colorLocation, 1, 1, 1, 1);
 		glUniformMatrix4fv(modelviewLocation, 1, GL_FALSE, identityMatrix);
 		glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, framebufferProjectionMatrix);
-		glUniform1ui(textureLocation, framebufferTexture);
+		glUniform1i(textureLocation, 0);
 
 		glBindBuffer(GL_ARRAY_BUFFER, framebufferVBO);
 		glBindVertexArray(framebufferVAO);
@@ -1133,7 +1121,6 @@ void Game::Run()
 
 		#pragma endregion Check if the player is trying to close the game
 
-
 #ifdef DEBUG_KEYS
 		if (keyboard[SDLK_F1])
 		{
@@ -1148,6 +1135,8 @@ void Game::Run()
 #endif
 
 		SDL_GL_SwapWindow(window);
+
+		LogAllGLErrors();
 	}
 }
 
@@ -1483,16 +1472,12 @@ void LoadShaders()
 		return;
 	}
 
-	LogAllGLErrors();
-
 	log = Shaders::CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource, defaultFragmentShader);
 	if (log.length() > 0)
 	{
 		System::LogError("Error compiling default fragment shader 4:\n%s\n", log.c_str());
 		return;
 	}
-
-	LogAllGLErrors();
 
 	log = Shaders::CompileShader(GL_FRAGMENT_SHADER, colorizeFragmentShaderSource, colorizeFragmentShader);
 	if (log.length() > 0)
@@ -1501,23 +1486,17 @@ void LoadShaders()
 		return;
 	}
 
-	LogAllGLErrors();
-
 	log = Shaders::LinkProgram(defaultVertexShader, defaultFragmentShader, defaultShader);
 	if (log.length() > 0)
 	{
 		System::LogError("Error linking default shader 4:\n%s\n", log.c_str());
 	}
 
-	LogAllGLErrors();
-
 	log = Shaders::LinkProgram(defaultVertexShader, colorizeFragmentShader, colorizeShader);
 	if (log.length() > 0)
 	{
 		System::LogError("Error linking colorize shader 4:\n%s\n", log.c_str());
 	}
-
-	LogAllGLErrors();
 }
 
 GLuint GenerateTexture(SDL_Surface *surface)
