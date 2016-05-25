@@ -107,7 +107,7 @@ mat4::mat4()
 	for (auto i = 0; i < 4; i++)
 		for(auto j = 0; j < 4; j++)
 		{
-			data[4 * i + j] = (i == j) ? 1 : 0;
+			data[4 * i + j] = (i == j) ? 1.0f : 0.0f;
 		}
 }
 

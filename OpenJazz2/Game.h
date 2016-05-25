@@ -86,7 +86,7 @@ private:
 	void GotoNextLevel();
 	void RestartLevel();
 
-	void BlitSurface(SDL_Surface *src, SDL_Surface *dst, float offsetX, float offsetY, bool tileX, bool tileY);
+	void BlitSurface(SDL_Surface *src, SDL_Surface *dst, int offsetX, int offsetY, bool tileX, bool tileY);
 	void BuildLevelVBOs(Level *level);
 	void CreateTilesheetTexture();
 	void CreateSpritesheets();

@@ -3,11 +3,11 @@
 
 template<typename T, typename TX>
 T min(const T &a, const TX &b)
-{	return (a<b) ? a : b;	}
+{	return ((a<(T)b) ? a : (T)b);	}
 
 template<typename T, typename TX>
 T max(const T &a, const TX &b)
-{	return (a>b) ? a : b;	}
+{	return ((a>(T)b) ? a : (T)b);	}
 
 class Math
 {

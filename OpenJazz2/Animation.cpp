@@ -102,12 +102,12 @@ Animations::Animations(const char *filename)
 
 void Animations::DumpToDisk(const char *directory) const
 {
-	for (int i = 0; i < animSets.size(); i++)
+	for (size_t i = 0; i < animSets.size(); i++)
 	{
-		for (int j = 0; j < animSets[i].GetAnimCount(); j++)
+		for (uint32_t j = 0; j < animSets[i].GetAnimCount(); j++)
 		{
 			const Animation *anim = animSets[i].GetAnim(j);
-			for (int k = 0; k < anim->GetFrameCount(); k++)
+			for (uint32_t k = 0; k < anim->GetFrameCount(); k++)
 			{
 				const AnimationFrame *frame = anim->GetFrame(k);
 				if (frame != nullptr)
@@ -189,7 +189,7 @@ AnimationSet::AnimationSet(FILE *fi, const uint32_t &animSetId, const uint32_t *
 	delete[] compressed;
 
 	std::vector<FrameImage> frameImages;
-	for (int i = 0; i < frameInfos.size(); i++)
+	for (size_t i = 0; i < frameInfos.size(); i++)
 	{
 		FrameImage image(&Data[frameInfos[i].ImageAddress], (header.UData3 - frameInfos[i].ImageAddress), isGem(animSetId, animIds[i]) ? palette3 : palette);
 		frameImages.push_back(image);
@@ -208,7 +208,7 @@ AnimationSet::AnimationSet(FILE *fi, const uint32_t &animSetId, const uint32_t *
 	delete[] Data;
 
 	offset = 0;
-	for (int i = 0; i < animationInfos.size(); i++)
+	for (size_t i = 0; i < animationInfos.size(); i++)
 	{
 		vector<AnimationFrame> frames;
 		for (int j = 0; j < animationInfos[i].FrameCount; j++)

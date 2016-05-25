@@ -11,9 +11,9 @@ using namespace std;
 //#define DRAW_PLAYER_BOUNDING_BOX
 
 float redGemColor[] = { 1,77.0f / 255.0f, 136.0f / 255.0f, 0.75f };
-float greenGemColor[] = { 76.0f / 255.0f, 1, 190.0f / 255.0f, 0.75 };
-float blueGemColor[] = { 76.0f / 255.0f, 190.0f / 255.0f, 1, 0.75  };
-float purpleGemColor[] = { 190.0f / 255.0f, 76.0f / 255.0f, 190.0 / 255.0f, 0.75  };
+float greenGemColor[] = { 76.0f / 255.0f, 1, 190.0f / 255.0f, 0.75f };
+float blueGemColor[] = { 76.0f / 255.0f, 190.0f / 255.0f, 1, 0.75f  };
+float purpleGemColor[] = { 190.0f / 255.0f, 76.0f / 255.0f, 190.0f / 255.0f, 0.75f  };
 
 GLuint defaultShader, colorizeShader;
 GLuint hudVAO = 0;
@@ -128,7 +128,7 @@ void DrawText(const Animation *font, const map<uint32_t, SpriteCoords> *sprites,
 			charVerts[4 * i + 3].z = 0;
 			charVerts[4 * i + 3].s = ((float)coords.x + coords.width) / (float)SPRITESHEET_SIZE;
 			charVerts[4 * i + 3].t = ((float)coords.y + coords.height) / (float)SPRITESHEET_SIZE;
-			length += coords.width;
+			length += (int)coords.width;
 		}
 	}
 
@@ -166,27 +166,27 @@ void DrawHealth(int Health, const SpriteCoords &coords, const float &x, const fl
 		int length = 0;
 		for(int i = 0; i < Health; i++)
 		{
-			healthVerts[4*i].x = length;
-			healthVerts[4*i].y = 0;
-			healthVerts[4*i].z = 0;
+			healthVerts[4*i].x = (float)length;
+			healthVerts[4*i].y = 0.0f;
+			healthVerts[4*i].z = 0.0f;
 			healthVerts[4*i].s = ((float)(coords.x))/(float)SPRITESHEET_SIZE;
 			healthVerts[4*i].t = ((float)(coords.y))/(float)SPRITESHEET_SIZE;
-			healthVerts[4*i+1].x = length;
+			healthVerts[4*i+1].x = (float)length;
 			healthVerts[4*i+1].y = coords.height;
-			healthVerts[4*i+1].z = 0;
+			healthVerts[4*i+1].z = 0.0f;
 			healthVerts[4*i+1].s = ((float)(coords.x))/(float)SPRITESHEET_SIZE;
 			healthVerts[4*i+1].t = ((float)(coords.y + coords.height))/(float)SPRITESHEET_SIZE;
 			healthVerts[4*i+2].x = length + coords.width;
 			healthVerts[4*i+2].y = coords.height;
-			healthVerts[4*i+2].z = 0;
+			healthVerts[4*i+2].z = 0.0f;
 			healthVerts[4*i+2].s = ((float)(coords.x + coords.width))/(float)SPRITESHEET_SIZE;
 			healthVerts[4*i+2].t = ((float)(coords.y + coords.height))/(float)SPRITESHEET_SIZE;
 			healthVerts[4*i+3].x = length + coords.width;
-			healthVerts[4*i+3].y = 0;
-			healthVerts[4*i+3].z = 0;
+			healthVerts[4*i+3].y = 0.0f;
+			healthVerts[4*i+3].z = 0.0f;
 			healthVerts[4*i+3].s = ((float)(coords.x + coords.width))/(float)SPRITESHEET_SIZE;
 			healthVerts[4*i+3].t = ((float)(coords.y))/(float)SPRITESHEET_SIZE;
-			length += coords.width;
+			length += (int)coords.width;
 		}
 		glDisable(GL_DEPTH_TEST);
 		float modelview[16];
@@ -224,12 +224,12 @@ void DrawLives(int lives, const SpriteCoords &coords, const Animation *font, con
 
 	#pragma region Draw Player Head 
 
-	headVerts[0].x = length;
+	headVerts[0].x = (float)length;
 	headVerts[0].y = 0;
 	headVerts[0].z = 0;
 	headVerts[0].s = ((float)(coords.x)) / (float)SPRITESHEET_SIZE;
 	headVerts[0].t = ((float)(coords.y)) / (float)SPRITESHEET_SIZE;
-	headVerts[1].x = length;
+	headVerts[1].x = (float)length;
 	headVerts[1].y = coords.height;
 	headVerts[1].z = 0;
 	headVerts[1].s = ((float)(coords.x)) / (float)SPRITESHEET_SIZE;
@@ -244,7 +244,7 @@ void DrawLives(int lives, const SpriteCoords &coords, const Animation *font, con
 	headVerts[3].z = 0;
 	headVerts[3].s = ((float)(coords.x + coords.width)) / (float)SPRITESHEET_SIZE;
 	headVerts[3].t = ((float)(coords.y)) / (float)SPRITESHEET_SIZE;
-	length += coords.width;
+	length += (int)coords.width;
 
 	#pragma endregion Draw Player Head
 
@@ -266,6 +266,7 @@ void DrawLives(int lives, const SpriteCoords &coords, const Animation *font, con
 }
 
 void LoadShaders();
+
 GLuint GenerateTexture(SDL_Surface *surface);
 
 Game::Game(int argc, char *argv[]) :
@@ -316,7 +317,6 @@ state(MainMenu)
 		SDL_ShowCursor(0);
 	}
 
-	char buffer[256];
 	SDL_DisplayMode disp;
 	SDL_GetDesktopDisplayMode(0, &disp);
 	
@@ -326,7 +326,7 @@ state(MainMenu)
 		WindowHeight = disp.h;
 	}
 
-	window = SDL_CreateWindow("Jazz Jackrabbit 2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, max(640, WindowWidth), max(480, WindowHeight), SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | ((Fullscreen) ? ((BorderlessFullscreen) ? SDL_WINDOW_BORDERLESS : SDL_WINDOW_FULLSCREEN_DESKTOP) : 0));
+	window = SDL_CreateWindow("Jazz Jackrabbit 2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, max(640, (int)WindowWidth), max(480, (int)WindowHeight), SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | ((Fullscreen) ? ((BorderlessFullscreen) ? SDL_WINDOW_BORDERLESS : SDL_WINDOW_FULLSCREEN_DESKTOP) : 0));
 	glContext = SDL_GL_CreateContext(window);
 	
 	glewInit();
@@ -485,7 +485,7 @@ void Game::RestartLevel()
 	}
 	player = nullptr;
 
-	for (int i = 0; i < level->GetTileCount(3); i++)
+	for (uint32_t i = 0; i < level->GetTileCount(3); i++)
 		level->SetTileFrame(i, 0);
 	Events.clear();
 	BackgroundActors.clear();
@@ -524,7 +524,7 @@ void Game::Run()
 	float renderingProjectionMatrix[16], framebufferProjectionMatrix[16], identityMatrix[16];
 
 	mat4().getData(identityMatrix);
-	mat4::ortho(0, WindowWidth, WindowHeight - (float)(WindowHeight - 480), -(float)(WindowHeight - 480), 500, -500).getData(renderingProjectionMatrix);
+	mat4::ortho(0.0f, (float)WindowWidth, (float)WindowHeight - (float)(WindowHeight - 480), -(float)(WindowHeight - 480), 500.0f, -500.0f).getData(renderingProjectionMatrix);
 	mat4::ortho(0, 1, 1, 0, -500, 500).getData(framebufferProjectionMatrix);
 
 	bool quit = false;
@@ -542,7 +542,7 @@ void Game::Run()
 		glBindFramebuffer(GL_FRAMEBUFFER_EXT, framebuffer);
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		SDL_Rect s, d;
+		SDL_Rect s;
 		s.x = 0;
 		s.y = 0;
 
@@ -631,7 +631,7 @@ void Game::Run()
 						starty--;
 					for (int j = starty; (LayerHeight * j) + LayerYOffset < 480; j++)
 					{
-						mat4::translate(LayerXOffset, LayerYOffset + (j * LayerHeight), 0.0f).getData(modelview);
+						mat4::translate((float)LayerXOffset, (float)LayerYOffset + (j * LayerHeight), 0.0f).getData(modelview);
 						glUniformMatrix4fv(modelviewLocation, 1, GL_FALSE, modelview);
 						glDrawArrays(GL_QUADS, 0, LayerVertexCount[i]);
 					}
@@ -641,10 +641,10 @@ void Game::Run()
 			if (i == 3)
 			{
 				glBindTexture(GL_TEXTURE_2D, SpriteSheets[0]);
-				float depth = level->GetLayerZ(3);
+				float depth = (float)level->GetLayerZ(3);
 				int LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(3));
 				int LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(3));
-				mat4::translate(LayerXOffset, LayerYOffset, 0.0f);
+				mat4::translate((float)LayerXOffset, (float)LayerYOffset, 0.0f);
 
 				if (player->GetHealth() > 0)
 				{
@@ -940,12 +940,12 @@ void Game::Run()
 		GLuint projectionLocation = glGetUniformLocation(defaultShader, "projection");
 
 		glBindTexture(GL_TEXTURE_2D, SpriteSheets[0]);
-		float depth = level->GetLayerZ(3);
+		float depth = (float)level->GetLayerZ(3);
 		int LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(3));
 		int LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(3));
 
 		float modelview[16];
-		mat4::translate(LayerXOffset, LayerYOffset, 0.0f).getData(modelview);
+		mat4::translate((float)LayerXOffset, (float)LayerYOffset, 0.0f).getData(modelview);
 
 		glUniformMatrix4fv(modelviewLocation, 1, GL_FALSE, modelview);
 		glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, renderingProjectionMatrix);
@@ -1053,12 +1053,12 @@ void Game::Run()
 		if(player->GetState() == BUTTSTOMP)
 		{
 			vec2 playerPos = player->GetPosition();
-			int tileXCoord = Math::Floor((playerPos.x - 12) / 32);
-			int tileYCoord = Math::Floor(playerPos.y / 32);
+			int tileXCoord = (int)Math::Floor((playerPos.x - 12) / 32);
+			int tileYCoord = (int)Math::Floor(playerPos.y / 32);
 			J2L_Event event = level->GetEvents(tileXCoord, tileYCoord + 1);
 			if((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
 				level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord + 1) + tileXCoord, 1);
-			tileXCoord = Math::Floor((playerPos.x + 12) / 32);
+			tileXCoord = (int)Math::Floor((playerPos.x + 12) / 32);
 			event = level->GetEvents(tileXCoord, tileYCoord + 1);
 			if ((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
 				level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord + 1) + tileXCoord, 1);
@@ -1066,14 +1066,14 @@ void Game::Run()
 		else if (player->GetState() == HIGHJUMP)
 		{
 			vec2 playerPos = player->GetPosition();
-			int tileXCoord = Math::Floor((playerPos.x - 12) / 32);
-			int tileYCoord = Math::Floor(playerPos.y / 32);
+			int tileXCoord = (int)Math::Floor((playerPos.x - 12) / 32);
+			int tileYCoord = (int)Math::Floor(playerPos.y / 32);
 			if (tileYCoord > 0)
 			{
 				J2L_Event event = level->GetEvents(tileXCoord, tileYCoord - 1);
 				if ((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
 					level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord - 1) + tileXCoord, 1);
-				tileXCoord = Math::Floor((playerPos.x + 12) / 32);
+				tileXCoord = (int)Math::Floor((playerPos.x + 12) / 32);
 				event = level->GetEvents(tileXCoord, tileYCoord - 1);
 				if ((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
 					level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord - 1) + tileXCoord, 1);
@@ -1082,7 +1082,7 @@ void Game::Run()
 		
 		if (sinceLastUpdate < (1.0f / 60.0f))
 		{
-			SDL_Delay(1000 * ((1.0f / 60.0f) - sinceLastUpdate));
+			SDL_Delay((uint32_t)(1000 * ((1.0f / 60.0f) - sinceLastUpdate)));
 		}
 
 		for (multimap<Control, uint32_t>::iterator i = KeyBindings.find(MENU); i != KeyBindings.end(); i++)
@@ -1262,17 +1262,17 @@ void Game::RecalculateLevelVBOs(Level *level, const float &timeElapsed)
 							if (tileInfo.index != -1)
 							{
 								vertex v1, v2, v3, v4;
-								v1.x = s * 32;
-								v1.y = t * 32;
+								v1.x = s * 32.0f;
+								v1.y = t * 32.0f;
 								v1.z = (float)layerZ;
-								v2.x = s * 32;
-								v2.y = (t + 1) * 32;
+								v2.x = s * 32.0f;
+								v2.y = (t + 1) * 32.0f;
 								v2.z = (float)layerZ;
-								v3.x = (s + 1) * 32;
-								v3.y = (t + 1) * 32;
+								v3.x = (s + 1) * 32.0f;
+								v3.y = (t + 1) * 32.0f;
 								v3.z = (float)layerZ;
-								v4.x = (s + 1) * 32;
-								v4.y = t * 32;
+								v4.x = (s + 1) * 32.0f;
+								v4.y = t * 32.0f;
 								v4.z = (float)layerZ;
 								if (tileInfo.flipped)
 								{
@@ -1368,7 +1368,7 @@ void Game::CreateSpritesheets()
 		const AnimationSet *animSet = anims->GetAnimSet(ai);
 		if (animSet)
 		{
-			for (int aj = 0; aj < animSet->GetAnimCount(); aj++)
+			for (uint32_t aj = 0; aj < animSet->GetAnimCount(); aj++)
 			{
 				const Animation *anim = animSet->GetAnim(aj);
 				for (uint32_t k = 0; k < anim->GetFrameCount(); k++)
@@ -1518,7 +1518,7 @@ bool _startsWith(const char *a, const char *b)
 {
 	if (strlen(a) < strlen(b))
 		return false;
-	for (int i = 0; i < strlen(b); i++)
+	for (size_t i = 0; i < strlen(b); i++)
 		if (a[i] != b[i])
 			return false;
 	return true;
@@ -1566,7 +1566,7 @@ void Game::LoadSettings()
 	}
 }
 
-void Game::BlitSurface(SDL_Surface *src, SDL_Surface *dst, float offsetX, float offsetY, bool tileX, bool tileY)
+void Game::BlitSurface(SDL_Surface *src, SDL_Surface *dst, int offsetX, int offsetY, bool tileX, bool tileY)
 {
 	SDL_Rect s, d;
 	s.x = 0;
@@ -1591,8 +1591,8 @@ void Game::BlitSurface(SDL_Surface *src, SDL_Surface *dst, float offsetX, float 
 				s.h = src->h;
 				d.w = src->w;
 				d.h = src->h;
-				d.x = (int)Math::Round((src->w * j) + offsetX);
-				d.y = (int)Math::Round((src->h * i) + offsetY);
+				d.x = (int)Math::Round((float)(src->w * j) + offsetX);
+				d.y = (int)Math::Round((float)(src->h * i) + offsetY);
 				SDL_BlitSurface(src, &s, dst, &d);
 			}
 		}
@@ -1602,14 +1602,14 @@ void Game::BlitSurface(SDL_Surface *src, SDL_Surface *dst, float offsetX, float 
 		int startx = 0;
 		while (startx + offsetX > 0)
 			startx -= src->w;
-		for (int j = startx; (src->w * j) + offsetX < WindowWidth; j++)
+		for (uint32_t j = startx; (src->w * j) + offsetX < WindowWidth; j++)
 		{
 			s.w = src->w;
 			s.h = src->h;
 			d.w = src->w;
 			d.h = src->h;
-			d.x = (int)Math::Round((src->w * j) + offsetX);
-			d.y = (int)Math::Round(offsetY);
+			d.x = (int)Math::Round((float)(src->w * j) + offsetX);
+			d.y = (int)Math::Round((float)offsetY);
 			SDL_BlitSurface(src, &s, dst, &d);
 		}
 	}
@@ -1618,7 +1618,7 @@ void Game::BlitSurface(SDL_Surface *src, SDL_Surface *dst, float offsetX, float 
 		int starty = 0;
 		while (starty + offsetY > 0)
 			starty -= src->h;
-		for (int i = starty; (src->h * i) + offsetY < WindowHeight; i++)
+		for (uint32_t i = starty; (src->h * i) + offsetY < WindowHeight; i++)
 		{
 			s.w = src->w;
 			s.h = src->h;
@@ -1656,11 +1656,16 @@ Game::~Game()
 		delete anims;
 	}
 
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glDeleteVertexArrays(8, LayerVAOs);
 	glDeleteBuffers(8, Layers);
+	glDeleteVertexArrays(1, &playerVAO);
 	glDeleteBuffers(1, &playerVBO);
+	glDeleteVertexArrays(1, &framebufferVAO);
 	glDeleteBuffers(1, &framebufferVBO);
 	glDeleteTextures(1, &framebufferTexture);
-	for (int i = 0; i < SpriteSheets.size(); i++)
+	for (size_t i = 0; i < SpriteSheets.size(); i++)
 	{
 		glDeleteTextures(1, &SpriteSheets[i]);
 	}
@@ -1687,13 +1692,13 @@ void SortDescending(vector<Node> &nodes)
 void Game::LoadSpriteCoords()
 {
 	std::vector<Node> nodes;
-	for (int i = 0; i < anims->GetAnimSetCount(); i++)
+	for (uint32_t i = 0; i < anims->GetAnimSetCount(); i++)
 	{
 		const AnimationSet *animSet = anims->GetAnimSet(i);
-		for (int j = 0; j < animSet->GetAnimCount(); j++)
+		for (uint32_t j = 0; j < animSet->GetAnimCount(); j++)
 		{
 			const Animation *anim = animSet->GetAnim(j);
-			for (int k = 0; k < anim->GetFrameCount(); k++)
+			for (uint32_t k = 0; k < anim->GetFrameCount(); k++)
 			{
 				const AnimationFrame *frame = anim->GetFrame(k);
 				Node node;
@@ -1720,10 +1725,10 @@ void Game::LoadSpriteCoords()
 		nodes[i].rc.y = row;
 		offsetX += nodes[i].rc.w;
 		SpriteCoords coord;
-		coord.x = nodes[i].rc.x;
-		coord.y = nodes[i].rc.y;
-		coord.width = nodes[i].rc.w - 1;
-		coord.height = nodes[i].rc.h - 1;
+		coord.x = (float)nodes[i].rc.x;
+		coord.y = (float)nodes[i].rc.y;
+		coord.width = nodes[i].rc.w - 1.0f;
+		coord.height = nodes[i].rc.h - 1.0f;
 		coord.TextureIndex = 0;
 		Sprites[nodes[i].SpriteID] = coord;
 	}

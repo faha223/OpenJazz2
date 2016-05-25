@@ -437,7 +437,7 @@ const AnimationFrame *Actor::GetFrame() const
 		
 		auto animTime = ((int)Math::Floor(Age * frameRate * SpeedModifier));
 		if (stopAtAnimationEnd)
-			animTime = min(animTime, (frameCount - 1));
+			animTime = min(animTime, ((int)frameCount - 1));
 		int frame = animTime % frameCount;
 
 		switch (state)
@@ -449,11 +449,11 @@ const AnimationFrame *Actor::GetFrame() const
 		case PlayOnce:
 			animTime = ((int)Math::Floor(timeSinceStateChanged * frameRate * SpeedModifier));
 			if (stopAtAnimationEnd)
-				animTime = min(animTime, (frameCount - 1));
+				animTime = min(animTime, ((int)frameCount - 1));
 			frame = animTime % frameCount;
-			return anim->GetFrame(max(0, min(frame, frameCount - 1)));
+			return anim->GetFrame(max(0, min(frame, (int)frameCount - 1)));
 		default:
-			return anim->GetFrame(max(0, min(frame, frameCount - 1)));
+			return anim->GetFrame(max(0, min(frame, (int)frameCount - 1)));
 		}
 	}
 	return nullptr;
@@ -479,11 +479,11 @@ bool Actor::RenderFromColdSpot() const
 
 inline bool HotspotCollision(const Player *player, vec2 hotspot)
 {
-	SDL_Rect aRect, pRect;
+	SDL_Rect pRect;
 	vec2 playerPos = player->GetPosition();
 
-	pRect.x = playerPos.x - 16;
-	pRect.y = playerPos.y - 30;
+	pRect.x = (int)playerPos.x - 16;
+	pRect.y = (int)playerPos.y - 30;
 	pRect.w = 32;
 	pRect.h = 32;
 	return ((hotspot.x >= pRect.x) && (hotspot.x <= (pRect.x + pRect.w))

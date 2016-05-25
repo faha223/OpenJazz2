@@ -317,6 +317,8 @@ string GetSDLKEntry(const uint32_t &key)
 		return "MENU";
 	case SDLK_POWER:
 		return "POWER";
+	default:
+		return "";
 	}
 }
 

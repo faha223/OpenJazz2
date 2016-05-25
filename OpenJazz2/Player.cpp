@@ -285,8 +285,9 @@ uint8_t Player::AddAmmo(const Weapons &type, const uint8_t &add)
 		return 0;
 	case Freezer:
 		freezerAmmo += add;
-		break;
+		return 0;
 	}
+	return add;
 }
 
 void Player::AddPoints(const uint32_t &points)
@@ -401,9 +402,9 @@ bool Player::HasAnimationEnded() const
 			break;
 	}
 	const Animation *anim = anims->GetAnimSet(ANIM_SET_JAZZ)->GetAnim(CurrentAnim);
-	float FrameCount = anim->GetFrameCount();
-	float FrameRate = anim->GetFrameRate();
-	return ((timeSinceStateChanged*SpeedModifier) > ((LoopCount * FrameCount)-1)/FrameRate);
+	float FrameCount = (float)anim->GetFrameCount();
+	float FrameRate = (float)anim->GetFrameRate();
+	return ((timeSinceStateChanged*SpeedModifier) > ((LoopCount * FrameCount)-1.0f)/FrameRate);
 }
 
 void Player::SetState(const PlayerState &newState)
@@ -894,8 +895,8 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 		if (state == STARTING_SKID)
 		{
 			const Animation *anim = anims->GetAnimSet(ANIM_SET_JAZZ)->GetAnim(ANIM_JAZZ_STARTING_SKID);
-			float FrameCount = anim->GetFrameCount();
-			float FrameRate = anim->GetFrameRate();
+			float FrameCount = (float)anim->GetFrameCount();
+			float FrameRate = (float)anim->GetFrameRate();
 			if (timeSinceStateChanged > ((FrameCount - 1) / FrameRate))
 			{
 				SetState(SKIDDING);
@@ -909,7 +910,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 		}
 		break;
 	case HPOLE:
-		Position.x = 16 + (32 * TileXCoord);
+		Position.x = 16.0f + (32.0f * TileXCoord);
 		Velocity.x = 0;
 		Velocity.y = 0;
 		if(HasAnimationEnded())
@@ -920,13 +921,13 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 		}
 		break;
 	case VPOLE:
-		Position.y = 32 * (TileYCoord)+31;
+		Position.y = 32.0f * (TileYCoord)+31.0f;
 		Velocity.y = 0;
 		Velocity.x = 0;
 		if(HasAnimationEnded())
 		{
 			Velocity.y = ExitPoleVelocity;
-			Position.y += (32 * ((ExitPoleVelocity < 0) ? -1 : 1));
+			Position.y += (32.0f * ((ExitPoleVelocity < 0.0f) ? -1.0f : 1.0f));
 			grounded = false;
 			SetState(BALL);
 		}
@@ -1239,7 +1240,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 			float YVelocity = e.GetYVelocity();
 			if (XVelocity != 0)
 			{
-				auto posy = (TileYCoord + 1) * 32;
+				auto posy = (TileYCoord + 1) * 32.0f;
 				{
 					Position.y = posy;
 					Velocity = vec2(XVelocity, YVelocity);
@@ -1248,7 +1249,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 			}
 			else if (YVelocity != 0)
 			{
-				auto posx = ((TileXCoord + 1) * 32) - 16;
+				auto posx = ((TileXCoord + 1) * 32.0f) - 16.0f;
 				if ((posx - Position.x) * (posx - (Position.x + (Velocity.x * dt))) <= 0)
 				{
 					Position.x = posx;
@@ -1266,12 +1267,12 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 
 uint32_t Player::GetHealth() const
 {
-	return max(0, health);
+	return max(0, (int)health);
 }
 
 uint32_t Player::GetLives() const
 {
-	return max(0, lives);
+	return max(0, (int)lives);
 }
 
 void Player::AddLives(uint8_t add)

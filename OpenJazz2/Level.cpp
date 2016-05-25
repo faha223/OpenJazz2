@@ -323,7 +323,7 @@ std::string Level::GetNextLevel() const
 	if(level.length() > 0)
 	{
 		level[0] = ((level[0] >= 'a') && (level[0] <= 'z')) ? level[0]  + ('A' - 'a') : level[0];
-		for(int i = 1; i < level.length(); i++)
+		for(size_t i = 1; i < level.length(); i++)
 		{
 			if((level[i] >= 'A') && (level[i] <= 'Z'))
 				level[i] += ('a' - 'A');
