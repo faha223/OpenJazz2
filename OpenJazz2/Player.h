@@ -12,8 +12,8 @@
 #pragma region Gameplay Calibration
 
 #define MaxVelocity 512.0f								// Measured
-#define WalkSpeed 270.0f								// Measured
-#define RunSpeed 580.0f									// Measured
+#define WalkSpeed 300.0f								// Measured
+#define RunSpeed 600.0f									// Measured
 #define Gravity (1536.0f)								// Measured
 #define FallingGravity (768.0f)							// Measured
 #define Acceleration 0.125f								// 

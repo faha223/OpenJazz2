@@ -268,9 +268,18 @@ void Actor::SetState(const ActorState &newState)
 
 vec2 Actor::GetPosition() const
 {
+	vec2 offset;
+
+	if (isFood() || (GetGemValue() > 0) || (GetMoneyAdd() > 0) || (GetAmmoAdd() > 0))
+		offset = vec2(0, 12);
+	else if ((eventId == HorRedSpring) || (eventId == HorGreenSpring) || (eventId == HorBlueSpring))
+		offset = vec2(0, 12);
+
 	if (DoesNotFloat)
-		return Location;
-	return Location + vec2(0.0f, (Math::Sin(Age * ActorFloatingPeriod + PeriodInitialOffset) + 1) * ActorFloatingRadius);
+	{
+		return Location + offset;
+	}
+	return Location + vec2(0.0f, (Math::Sin(Age * ActorFloatingPeriod + PeriodInitialOffset) + 1) * ActorFloatingRadius) + offset;
 }
 
 EventID Actor::GetEventID() const

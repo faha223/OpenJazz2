@@ -823,7 +823,8 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 		{
 			if ((Controls[RUN] && (Controls[LEFT] || Controls[RIGHT])) || SpringInfluenced)
 			{
-				Facing = Controls[LEFT] ? -1 : 1;
+				if(!SpringInfluenced)
+					Facing = Controls[LEFT] ? -1 : 1;
 				if ((Controls[LEFT] && (coll.iLeft <= 1)) || (Controls[RIGHT] && (coll.iRight <= 1)))
 				{
 					SetState(STANDING);
