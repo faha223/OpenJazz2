@@ -19,6 +19,159 @@ GLuint defaultShader, colorizeShader;
 GLuint hudVAO = 0;
 GLuint hudVBO = 0;
 
+#pragma region Vertex Shader Source
+
+string glsl_VertexShaderShared = R"glsl(
+#version 400
+
+uniform mat4 modelview;
+uniform mat4 projection;
+uniform vec4 VertexColor;
+
+layout(location = 0) in vec3 VertexPosition;
+layout(location = 1) in vec2 VertexTexcoord;
+
+out vec4 color;
+out vec2 texcoord;
+)glsl";
+
+string glsl_GenericVertexShaderMain = R"glsl(
+void main()
+{
+	gl_Position = projection * modelview * vec4(VertexPosition, 1.0);
+	color = VertexColor;
+	texcoord = VertexTexcoord;
+}
+)glsl";
+
+#pragma endregion Vertex Shader Source
+
+#pragma region Fragment Shader Source
+
+string glsl_FragmentShaderShared = R"glsl(
+#version 400
+
+uniform sampler2D texture;
+in vec4 color;
+in vec2 texcoord;
+
+out vec4 FragColor;
+)glsl";
+
+string glsl_GenericFragmentShaderMain = R"glsl(
+void main()
+{
+	FragColor = texture2D(texture, texcoord) * color;
+}
+)glsl";
+
+string glsl_rgb2hcv = R"glsl(
+vec3 rgb2hcv(vec3 rgb)
+{
+	float Epsilon = 1e-10;
+	// Based on work by Sam Hocevar and Emil Persson
+	vec4 P = (rgb.g < rgb.b) ? vec4(rgb.bg, -1.0, 2.0 / 3.0) : vec4(rgb.gb, 0.0, -1.0 / 3.0);
+	vec4 Q = (rgb.r < P.x) ? vec4(P.xyw, rgb.r) : vec4(rgb.r, P.yzx);
+	float C = Q.x - min(Q.w, Q.y);
+	float H = abs((Q.w - Q.y) / (6.0 * C + Epsilon) + Q.z);
+	return vec3(H, C, Q.x);
+}
+)glsl";
+
+string glsl_rgb2hsl = R"glsl(
+vec3 rgb2hsl(vec3 rgb)
+{
+	float Epsilon = 1e-10;
+	vec3 HCV = rgb2hcv(rgb);
+	float L = HCV.z - HCV.y * 0.5;
+	float S = HCV.y / (1.0 - abs(L * 2.0 - 1.0) + Epsilon);
+	return vec3(HCV.x, S, L);
+}
+)glsl";
+
+string glsl_hue2rgb = R"glsl(
+vec3 hue2rgb(float H)
+{
+	float R = clamp(abs(H * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+	float G = clamp(2.0 - abs(H * 6.0 - 2.0), 0.0, 1.0);
+	float B = clamp(2.0 - abs(H * 6.0 - 4.0), 0.0, 1.0);
+	return vec3(R, G, B);
+}
+)glsl";
+
+string glsl_hsl2rgb = R"glsl(
+vec3 hsl2rgb(vec3 hsl)
+{
+	vec3 rgb = hue2rgb(hsl.x);
+	float C = (1.0 - abs(2.0 * hsl.z - 1.0)) * hsl.y;
+	return (rgb - 0.5) * C + hsl.z;
+}
+)glsl";
+
+string glsl_ColorizeFragmentShaderMain = R"glsl(
+void main()
+{
+	vec4 base = texture2D(texture, texcoord);
+	vec3 hsv = rgb2hsl(base.xyz);
+	vec3 col = rgb2hsl(color.xyz);
+	vec3 rgb = hsl2rgb(vec3(col.x, col.y, hsv.z * (255.0 / 195.0)));
+
+	FragColor = vec4(rgb, base.a * color.a);
+}
+)glsl";
+
+#pragma endregion Fragment Shader Source
+
+string stringJoin(const string &delim, vector<string> arr)
+{
+	if (arr.size() == 0)
+		return "";
+
+	string out = arr[0];
+	for (size_t i = 1; i < arr.size(); i++)
+	{
+		out += delim;
+		out += arr[i];
+	}
+	return out;
+}
+
+string trim(const string &str)
+{
+	int start = -1, end = -1;
+	for (size_t i = 0; i < str.length(); i++)
+	{
+		switch (str[i])
+		{
+		case '\t':
+		case '\s':
+		case '\n':
+		case '\r':
+			continue;
+		}
+
+		start = (int)i;
+		break;
+	}
+
+	for (size_t i = str.length(); i > 0; i--)
+	{
+		switch (str[i-1])
+		{
+		case '\t':
+		case '\s':
+		case '\n':
+		case '\r':
+			continue;
+		}
+
+		end = (int)i;
+		break;
+	}
+
+	return str.substr(start, end - start);
+}
+
 enum TextAlignment
 {
 	Left,
@@ -1458,9 +1611,20 @@ void Game::PrepareFramebuffer()
 
 void LoadShaders()
 {
-	string vertexShaderSource = File::ReadAllText("GenericVertex.glsl");
-	string fragmentShaderSource = File::ReadAllText("GenericFragment.glsl");
-	string colorizeFragmentShaderSource = File::ReadAllText("ColorizeFragment.glsl");
+	string vertexShaderSource = trim(stringJoin("\n", vector<string>({ 
+		glsl_VertexShaderShared, 
+		glsl_GenericVertexShaderMain })));
+	string fragmentShaderSource = trim(stringJoin("\n", vector<string>({ 
+		glsl_FragmentShaderShared, 
+		glsl_GenericFragmentShaderMain })));
+	string colorizeFragmentShaderSource = trim(stringJoin("\n", vector<string>({
+		glsl_FragmentShaderShared,
+		glsl_rgb2hcv,
+		glsl_rgb2hsl,
+		glsl_hue2rgb,
+		glsl_hsl2rgb,
+		glsl_ColorizeFragmentShaderMain
+	})));
 
 	GLuint defaultVertexShader = 0, defaultFragmentShader = 0, colorizeFragmentShader = 0;
 

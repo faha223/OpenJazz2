@@ -1678,8 +1678,6 @@ CollisionInfo Player::CheckCollision(const vec2 &PreviousPosition)
 bool Player::CollidedWithActor(const Actor &actor)
 {
 	bool consumed = false;
-	uint8_t remaining = AddHealth(actor.GetHealthAdd());
-	consumed = (remaining != actor.GetHealthAdd());
 	if (actor.isFood())
 	{
 		AddFood(actor.isFood() ? 1 : 0);
@@ -1699,6 +1697,13 @@ bool Player::CollidedWithActor(const Actor &actor)
 	{
 		AddLives(actor.GetLivesAdd());
 		consumed = true;
+	}
+	if (actor.GetHealthAdd() > 0)
+	{
+		auto add = actor.GetHealthAdd();
+		auto remainder = AddHealth(actor.GetHealthAdd());
+		if(add > remainder)
+			consumed = true;
 	}
 	if (actor.GetAmmoAdd() > 0)
 	{
