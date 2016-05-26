@@ -40,6 +40,7 @@ Actor::Actor(const Level *level, const Tileset *tileset, const vec2 &location, c
 	const AnimationSet *ammo = anims->GetAnimSet(ANIM_SET_AMMO);
 	const AnimationSet *items = anims->GetAnimSet(ANIM_SET_ITEMS);
 	const AnimationSet *springs = anims->GetAnimSet(ANIM_SET_SPRINGS);
+	const AnimationSet *birdy = anims->GetAnimSet(ANIM_SET_BIRDY);
 	uint32_t tileXCoord = (uint32_t)(location.x / 32);
 	uint32_t tileYCoord = (uint32_t)(location.y / 32);
 	switch (eventId)
@@ -172,6 +173,10 @@ Actor::Actor(const Level *level, const Tileset *tileset, const vec2 &location, c
 		animateOnce = true;
 		animateOnCollision = true;
 		stopAtAnimationEnd = true;
+		break;
+	case Birdy:
+		anim = birdy->GetAnim(ANIM_BIRDY_CAGE);
+		DoesNotFloat = true;
 		break;
 	default:
 		break;

@@ -13,6 +13,23 @@
 
 #pragma endregion AmmoAnimations
 
+#pragma region Birdy Animations
+
+#define ANIM_SET_BIRDY 21
+#define ANIM_BIRDY_FLY_RT_DN 0
+#define ANIM_BIRDY_FLY_RT 1
+#define ANIM_BIRDY_FLY_RT_UP 2
+#define ANIM_BIRDY_CAGE 3
+#define ANIM_BIRDY_CAGE_BROKEN 4
+#define ANIM_BIRDY_DEATH 5
+#define ANIM_BIRDY_FEATHER_COL1 6
+#define ANIM_BIRDY_FEATHER_COL2 7
+#define ANIM_BIRDY_FEATHER_COL1_2 8
+#define ANIM_BIRDY_FLY 9
+#define ANIM_BIRDY_DEAD 19
+
+#pragma endregion Birdy Animations
+
 #pragma region Jazz Player Animations
 
 #define ANIM_SET_JAZZ 54
@@ -226,11 +243,27 @@
 
 #pragma region Enemies
 
+#pragma region Witch
+
 #define ANIM_SET_WITCH 108
 #define ANIM_WITCH_CAST 0
 #define ANIM_WITCH_DEATH 1
 #define ANIM_WITCH_FLY 2
 #define ANIM_WITCH_SPELL 3
+
+#pragma endregion Witch
+
+#pragma region Normal Turtle
+
+#define ANIM_SET_NORM_TURTLE 99
+#define ANIM_NORM_TURT_BITE 0
+#define ANIM_NORM_TURT_CHEW 1
+#define ANIM_NORM_TURT_START_REVERSE 2
+#define ANIM_NORM_TURT_END_REVERSE 3
+#define ANIM_NORM_TURT_DEAD 4
+#define ANIM_NORM_TURT_WALK 7
+
+#pragma endregion Normal Turtle
 
 #pragma endregion Enemies
 
