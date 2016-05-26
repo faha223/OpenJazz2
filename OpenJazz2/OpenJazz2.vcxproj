@@ -82,6 +82,7 @@
     <ClInclude Include="Actor.h" />
     <ClInclude Include="Animation.h" />
     <ClInclude Include="Controls.h" />
+    <ClInclude Include="Enemy.h" />
     <ClInclude Include="Event.h" />
     <ClInclude Include="FileIO.h" />
     <ClInclude Include="FileSystem.h" />
@@ -103,6 +104,7 @@
     <ClCompile Include="Animation.cpp" />
     <ClCompile Include="Controls.cpp" />
     <ClCompile Include="Driver.cpp" />
+    <ClCompile Include="Enemy.cpp" />
     <ClCompile Include="Event.cpp" />
     <ClCompile Include="FileIO.cpp" />
     <ClCompile Include="FileSystem.cpp" />
