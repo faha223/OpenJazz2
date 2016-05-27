@@ -1,10 +1,7 @@
-Add Destructible Scenery (ammunition)
-Add Warps
-Add Hooks
-Add Shooting states to the player
-Add bouncing ammunition logic
-Add collision detection vs. the level for fallen actors
-Add enemies
-Add More Shader Effects
-Add Weapon to HUD
-Add Gem/Coin count to HUD
+Refactor the Actor, Enemy, and Player classes into more discrete, clear, purposeful classes.
+- An actor that can collide with the environment or not,
+- A character (actor) that can move around with an manipulate the environment
+- A player (character) that can be controlled,
+- An enemy (character)  that controls itself based on internal behaviors and level stimuli
+- Projectiles (actors) with owning characters that can affect other characters
+- Items (actors) that can be collected by players
