@@ -54,7 +54,7 @@ private:
 	GLuint LayerVAOs[8];
 	size_t LayerVertexCount[8];
 	GLuint framebuffer;
-	GLuint framebufferTexture;
+	GLuint framebufferTextures[2];
 	GLuint framebufferVBO;
 	GLuint framebufferVAO;
 	std::string Path;
@@ -95,6 +95,10 @@ private:
 	void RecalculateLevelVBOs(Level *level, const float &timeElapsed);
 	void LoadSpriteCoords();
 	void LoadSettings();
+
+	bool Update(const float &timeElapsed);
+	void Draw(const float &timeElapsed);
+	bool PostDrawUpdate();
 public:
 	Game(int argc, char *argv[]);
 	~Game();

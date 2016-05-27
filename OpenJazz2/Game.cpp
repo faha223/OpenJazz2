@@ -12,10 +12,14 @@ using namespace std;
 //#define SAVE_SPRITESHEETS
 //#define DRAW_PLAYER_BOUNDING_BOX
 
+#define SPRITE_LAYER_DEPTH 5
+#define VSYNC -1
+
 float redGemColor[] = { 1,77.0f / 255.0f, 136.0f / 255.0f, 0.75f };
 float greenGemColor[] = { 76.0f / 255.0f, 1, 190.0f / 255.0f, 0.75f };
 float blueGemColor[] = { 76.0f / 255.0f, 190.0f / 255.0f, 1, 0.75f  };
 float purpleGemColor[] = { 190.0f / 255.0f, 76.0f / 255.0f, 190.0f / 255.0f, 0.75f  };
+float renderingProjectionMatrix[16], framebufferProjectionMatrix[16], identityMatrix[16], modelview[16];
 
 GLuint defaultShader, colorizeShader, currentShader = 0;
 map<GLuint, map<string, GLuint>> shaderLocations;
@@ -149,7 +153,7 @@ string trim(const string &str)
 		switch (str[i])
 		{
 		case '\t':
-		case '\s':
+		case ' ':
 		case '\n':
 		case '\r':
 			continue;
@@ -164,7 +168,7 @@ string trim(const string &str)
 		switch (str[i-1])
 		{
 		case '\t':
-		case '\s':
+		case ' ':
 		case '\n':
 		case '\r':
 			continue;
@@ -505,6 +509,12 @@ showFPS(false)
 
 	window = SDL_CreateWindow("Jazz Jackrabbit 2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, max(640, (int)WindowWidth), max(480, (int)WindowHeight), SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | ((Fullscreen) ? ((BorderlessFullscreen) ? SDL_WINDOW_BORDERLESS : SDL_WINDOW_FULLSCREEN_DESKTOP) : 0));
 	glContext = SDL_GL_CreateContext(window);
+
+	// If VSYNC was set to -1 (late swap tearing), and the set fails, set it to 1 (VSYNC ON)
+	if ((-1 == SDL_GL_SetSwapInterval(VSYNC)) && (VSYNC == -1))
+	{
+		SDL_GL_SetSwapInterval(1);
+	}
 	
 	glewInit();
 
@@ -699,9 +709,8 @@ void Game::Run()
 	}
 
 	// Generate a projection matrix for rendering to the framebuffer, a projection matrix for rendering the framebuffer to the screen, and an identity matrix
-	float renderingProjectionMatrix[16], framebufferProjectionMatrix[16], identityMatrix[16];
 	mat4().getData(identityMatrix);
-	mat4::ortho(0.0f, (float)WindowWidth, (float)WindowHeight - (float)(WindowHeight - 480), -(float)(WindowHeight - 480), 500.0f, -500.0f).getData(renderingProjectionMatrix);
+	mat4::ortho(0.0f, (float)WindowWidth, (float)WindowHeight - (float)(WindowHeight - 480), -(float)(WindowHeight - 480), -500.0f, 500.0f).getData(renderingProjectionMatrix);
 	mat4::ortho(0, 1, 1, 0, -500, 500).getData(framebufferProjectionMatrix);
 
 	bool quit = false;
@@ -713,603 +722,609 @@ void Game::Run()
 		float sinceLastUpdate = timeElapsed - lastUpdate;
 		lastUpdate = timeElapsed;
 
-		OffsetX = (int)Math::Round(min(max(0.0f, player->GetPosition().x - (ASPECT_RATIO * 240.0f)), (level->GetLayerWidth(3)  * 32.0f) - (480.0f * ASPECT_RATIO)));
-		OffsetY = (int)Math::Round(min(max(0.0f, player->GetPosition().y - 261.0f), (level->GetLayerHeight(3) * 32.0f) - 480.0f));
-
-		glBindFramebuffer(GL_FRAMEBUFFER_EXT, framebuffer);
-
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		SDL_Rect s;
-		s.x = 0;
-		s.y = 0;
-
+		// Update the game state
+		quit |= Update(sinceLastUpdate);
 		RecalculateLevelVBOs(level, timeElapsed);
 
-		glBindTexture(GL_TEXTURE_2D, Tilesheet);
+		// Draw the frame
+		Draw(sinceLastUpdate);
 
-		#pragma region Draw the Layers
-
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-		for (int i = 7; i >= 0; i--)
+		// VSYNC
+		if (VSYNC == 0)
 		{
-			float modelview[16];
-			useProgram(defaultShader);
+			auto makeUpSeconds = max(0.0f, (1.0f / 60.0f) - sinceLastUpdate);
+			auto makeUpMillis = 1000.0f * makeUpSeconds;
+			auto makeUpTime = (uint32_t)Math::Round(makeUpMillis);
 
-			setUniform4f("VertexColor", 1, 1, 1, 1);
-			setUniform1i("texture", 0);
-			setUniformMatrix4fv("projection", 1, GL_FALSE, renderingProjectionMatrix);
-
-			if ((LayerVertexCount[i] > 0) && (player->GetHealth() > 0))
-			{
-				bool TileX = level->IsLayerTiledHorizontally(i);
-				bool TileY = level->IsLayerTiledVertically(i);
-				bool limitToVisibleRegion = level->IsLayerLimitedToVisibleRegion(i);
-				TileY = TileY && !limitToVisibleRegion;
-				float LayerWidth = 32.0f * level->GetLayerWidth(i);
-				float LayerHeight = 32.0f * level->GetLayerHeight(i);
-				int LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(i) + level->GetLayerAutoXSpeed(i));
-				int LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(i) + level->GetLayerAutoYSpeed(i));
-
-				glBindBuffer(GL_ARRAY_BUFFER, Layers[i]);
-				glBindVertexArray(LayerVAOs[i]);
-				
-				if (!TileX && !TileY)
-				{
-					mat4::translate(float(LayerXOffset), float(LayerYOffset), 0.0f).getData(modelview);
-					setUniformMatrix4fv("modelview", 1, GL_FALSE, modelview);
-					glDrawArrays(GL_QUADS, 0, LayerVertexCount[i]);
-				}
-				else if (TileX && TileY)
-				{
-					int LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(i)) + ((level->GetLayerWidth(3) - level->GetLayerWidth(i)));
-					int LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(i)) + ((level->GetLayerHeight(i) - level->GetLayerHeight(3)));
-					int startx = 0;
-					while ((startx * LayerWidth + LayerXOffset) > 0)
-						startx--;
-					int starty = 0;
-					while ((starty * LayerHeight + LayerXOffset) > 0)
-						starty--;
-					for (int j = starty; (LayerHeight * j) + LayerYOffset < 480; j++)
-					{
-						for (int k = startx; ((LayerWidth * k) + LayerXOffset) < (ASPECT_RATIO * 480); k++)
-						{
-							mat4::translate(LayerXOffset + (k * LayerWidth), LayerYOffset + (j * LayerHeight), 0.0f).getData(modelview);
-							setUniformMatrix4fv("modelview", 1, GL_FALSE, modelview);
-							glDrawArrays(GL_QUADS, 0, LayerVertexCount[i]);
-						}
-					}
-				}
-				else if (TileX && !TileY)
-				{
-					int LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(i));
-					int LayerYOffset = (int)Math::Round((limitToVisibleRegion) ? (480 - (level->GetLayerHeight(i) * 32)) : (-OffsetY * level->GetLayerYSpeed(i)));
-					int startx = 0;
-					while ((startx * LayerWidth + LayerXOffset) > 0)
-						startx--;
-					for (int k = startx; ((LayerWidth * k) + LayerXOffset) < (ASPECT_RATIO * 480); k++)
-					{
-						mat4::translate((float)(LayerXOffset + (k * LayerWidth)), (float)LayerYOffset, 0.0f).getData(modelview);
-						setUniformMatrix4fv("modelview", 1, GL_FALSE, modelview);
-						glDrawArrays(GL_QUADS, 0, LayerVertexCount[i]);
-					}
-				}
-				else if (TileY && !TileX)
-				{
-					int LayerXOffset = (int)Math::Round((limitToVisibleRegion) ? 0 : -OffsetX * level->GetLayerXSpeed(i));
-					int LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(i));
-					int starty = 0;
-					while ((starty * LayerHeight + LayerXOffset) > 0)
-						starty--;
-					for (int j = starty; (LayerHeight * j) + LayerYOffset < 480; j++)
-					{
-						mat4::translate((float)LayerXOffset, (float)LayerYOffset + (j * LayerHeight), 0.0f).getData(modelview);
-						setUniformMatrix4fv("modelview", 1, GL_FALSE, modelview);
-						glDrawArrays(GL_QUADS, 0, LayerVertexCount[i]);
-					}
-				}
-			}
-
-			#pragma region Draw the Sprite Layer
-
-			if (i == 3)
-			{
-				glBindTexture(GL_TEXTURE_2D, SpriteSheets[0]);
-				float depth = (float)level->GetLayerZ(3);
-				int LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(3));
-				int LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(3));
-				mat4::translate((float)LayerXOffset, (float)LayerYOffset, 0.0f);
-
-				if (player->GetHealth() > 0)
-				{
-					glBindBuffer(GL_ARRAY_BUFFER, ActorsVBO);
-					glBindVertexArray(ActorsVAO);
-					for (size_t actor_i = 0; actor_i < BackgroundActors.size(); actor_i++)
-					{
-						Actor *actor = &BackgroundActors[actor_i];
-						GLuint actorProgram = defaultShader;
-
-						float white[] = { 1, 1, 1, 1 };
-						const float *currentColor = white;
-
-						if (actor->GetEventID() == RedGemPlus1)
-						{
-							actorProgram = colorizeShader;
-							currentColor = redGemColor;
-						}
-						else if (actor->GetEventID() == GreenGemPlus1)
-						{
-							actorProgram = colorizeShader;
-							currentColor = greenGemColor;
-						}
-						else if (actor->GetEventID() == BlueGemPlus1)
-						{
-							actorProgram = colorizeShader;
-							currentColor = blueGemColor;
-						}
-						else if	(actor->GetEventID() == PurpleGemPlus1)
-						{
-							actorProgram = colorizeShader;
-							currentColor = purpleGemColor;
-						}
-
-						useProgram(actorProgram);
-						
-						setUniform4fv("VertexColor", 1, currentColor);
-						setUniformMatrix4fv("modelview", 1, GL_FALSE, modelview);
-						setUniformMatrix4fv("projection", 1, GL_FALSE, renderingProjectionMatrix);
-						setUniform1i("texture", 0);
-
-						const AnimationFrame *frame = actor->GetFrame();
-						if (frame != nullptr)
-						{
-
-							SpriteCoords coords = Sprites[frame->getIndex()];
-							vec2 position = actor->GetPosition();
-							vertex actorVerts[4];
-
-							bool isFlippedX = false;
-							bool isFlippedY = false;
-							if (actor->IsFlipped())
-							{
-								switch (actor->GetEventID())
-								{
-								case RedSpring:
-								case GreenSpring:
-								case BlueSpring:
-									isFlippedY = true;
-									break;
-								case HorRedSpring:
-								case HorGreenSpring:
-								case HorBlueSpring:
-									isFlippedX = true;
-									break;
-								}
-							}
-
-							if (actor->RenderFromColdSpot())
-							{
-								vec2 Coldspot = frame->getColdSpot();
-								position += vec2(0, 32);
-								position += vec2(Coldspot.x, Coldspot.y);
-							}
-							else
-							{
-								vec2 Hotspot = frame->getHotSpot();
-								position += vec2(Hotspot.x, Hotspot.y);
-							}
-							//if (isFlippedY)
-							//	/*position.y = position.y - 32 + coords.height;*/
-							if (isFlippedX)
-								position.x += 32 - coords.width;
-
-							actorVerts[0].x = position.x;
-							actorVerts[0].y = position.y;
-							actorVerts[0].z = depth;
-							actorVerts[0].s = isFlippedX ? (((float)coords.x + coords.width) / (float)SPRITESHEET_SIZE) : (((float)coords.x) / (float)SPRITESHEET_SIZE);
-							actorVerts[0].t = (((float)coords.y) / (float)SPRITESHEET_SIZE);
-
-							actorVerts[1].x = position.x;
-							actorVerts[1].y = position.y + coords.height;
-							actorVerts[1].z = depth;
-							actorVerts[1].s = isFlippedX ? (((float)(coords.x + coords.width)) / (float)SPRITESHEET_SIZE) : (((float)(coords.x)) / (float)SPRITESHEET_SIZE);
-							actorVerts[1].t = (((float)coords.y + coords.height) / (float)SPRITESHEET_SIZE);
-
-							actorVerts[2].x = position.x + (coords.width);
-							actorVerts[2].y = position.y + coords.height;
-							actorVerts[2].z = depth;
-							actorVerts[2].s = isFlippedX ? (((float)(coords.x)) / (float)SPRITESHEET_SIZE) : (((float)(coords.x + coords.width)) / (float)SPRITESHEET_SIZE);
-							actorVerts[2].t = (((float)coords.y + coords.height) / (float)SPRITESHEET_SIZE);
-
-							actorVerts[3].x = position.x + (coords.width);
-							actorVerts[3].y = position.y;
-							actorVerts[3].z = depth;
-							actorVerts[3].s = isFlippedX ? (((float)coords.x) / (float)SPRITESHEET_SIZE) : (((float)coords.x + coords.width) / (float)SPRITESHEET_SIZE);
-							actorVerts[3].t = (((float)(coords.y)) / (float)SPRITESHEET_SIZE);
-
-							actor->Update(max(1.0f / 60.0f, sinceLastUpdate));
-							bool consumed = false;
-							if (actor->CheckCollision(player, Sprites))
-							{
-								consumed = player->CollidedWithActor(*actor);
-
-								if (consumed)
-								{
-									player->AddPoints(actor->GetPointValue());
-								}
-							}
-
-							if (consumed || actor->GetDestroyActor())
-							{
-								if (actor->AddsSparkleOnDeath())
-								{
-									vec2 sparklePos = actor->GetPosition();
-									ForegroundActors.push_back(Actor(level, tileset, vec2(sparklePos.x, sparklePos.y + 16), Sparkle, anims, 0));
-								}
-								BackgroundActors[actor_i] = BackgroundActors.back();
-								BackgroundActors.pop_back();
-							}
-							
-							glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(vertex), actorVerts, GL_STREAM_DRAW);
-							glDrawArrays(GL_QUADS, 0, 4);
-							
-						}
-					}
-				}
-
-				if (!player->IsInvisible())
-				{
-					useProgram(defaultShader);
-
-					glColor4f(1, 1, 1, 1);
-					const AnimationFrame *frame = player->GetSprite();
-					vec2 Hotspot = frame->getHotSpot();
-
-					SpriteCoords coord = Sprites[frame->getIndex()];
-					int flipped = (player->GetFacing() == -1);
-
-					vec2 playerPos = player->GetPosition();
-
-#ifdef DRAW_PLAYER_BOUNDING_BOX
-					glBindTexture(GL_TEXTURE_2D, 0);
-					glColor3f(1, 0, 0);
-					vertex BoxVerts[4];
-					BoxVerts[0].x = playerPos.x - 12;
-					BoxVerts[0].y = playerPos.y;
-					BoxVerts[0].z = depth;
-					BoxVerts[1].x = playerPos.x - 12;
-					BoxVerts[1].y = playerPos.y - 30;
-					BoxVerts[1].z = depth;
-					BoxVerts[2].x = playerPos.x + 12;
-					BoxVerts[2].y = playerPos.y - 30;
-					BoxVerts[2].z = depth;
-					BoxVerts[3].x = playerPos.x + 12;
-					BoxVerts[3].y = playerPos.y;
-					BoxVerts[3].z = depth;
-					glBindBuffer(GL_ARRAY_BUFFER, playerVBO);
-					glBufferData(GL_ARRAY_BUFFER, 20 * sizeof(float), BoxVerts, GL_STREAM_DRAW);
-					glVertexPointer(3, GL_FLOAT, 5 * sizeof(float), (void*)0);
-					glDrawArrays(GL_QUADS, 0, 4);
-					glBindTexture(GL_TEXTURE_2D, SpriteSheets[0]);
-					glColor3f(1, 1, 1);
-#endif
-
-					if (!flipped)
-						playerPos += vec2(Hotspot.x, coord.height + Hotspot.y - 20);//Hotspot.y);
-					else
-					{
-						playerPos += vec2(-Hotspot.x, coord.height + Hotspot.y - 20);
-						coord.x += coord.width;
-						coord.width *= -1;
-					}
-					vertex PlayerVerts[4];
-					PlayerVerts[0].x = playerPos.x;
-					PlayerVerts[0].y = playerPos.y;
-					PlayerVerts[0].z = depth;
-					PlayerVerts[0].s = ((float)(!flipped) ? coord.x : coord.x + coord.width) / (float)SPRITESHEET_SIZE;
-					PlayerVerts[0].t = ((float)(coord.y + coord.height)) / (float)SPRITESHEET_SIZE;
-					PlayerVerts[1].x = playerPos.x;
-					PlayerVerts[1].y = playerPos.y - coord.height;
-					PlayerVerts[1].z = depth;
-					PlayerVerts[1].s = ((float)(!flipped) ? coord.x : coord.x + coord.width) / (float)SPRITESHEET_SIZE;
-					PlayerVerts[1].t = ((float)(coord.y)) / (float)SPRITESHEET_SIZE;
-					PlayerVerts[2].x = playerPos.x + coord.width;
-					PlayerVerts[2].y = playerPos.y - coord.height;
-					PlayerVerts[2].z = depth;
-					PlayerVerts[2].s = ((float)((!flipped) ? coord.x + coord.width : coord.x)) / (float)SPRITESHEET_SIZE;
-					PlayerVerts[2].t = ((float)(coord.y)) / (float)SPRITESHEET_SIZE;
-					PlayerVerts[3].x = playerPos.x + coord.width;
-					PlayerVerts[3].y = playerPos.y;
-					PlayerVerts[3].z = depth;
-					PlayerVerts[3].s = ((float)((!flipped) ? coord.x + coord.width : coord.x)) / (float)SPRITESHEET_SIZE;
-					PlayerVerts[3].t = ((float)coord.y + coord.height) / (float)SPRITESHEET_SIZE;
-					
-					setUniform4f("VertexColor", 1, 1, 1, 1);
-					setUniformMatrix4fv("modelview", 1, GL_FALSE, modelview);
-					setUniformMatrix4fv("projection", 1, GL_FALSE, renderingProjectionMatrix);
-					setUniform1i("texture", 0);
-
-					glBindVertexArray(playerVAO);
-					glBindBuffer(GL_ARRAY_BUFFER, playerVBO);
-					glBufferData(GL_ARRAY_BUFFER, 20 * sizeof(float), PlayerVerts, GL_STREAM_DRAW);
-					glDrawArrays(GL_QUADS, 0, 4);
-				}
-
-				if (player->GetHealth() > 0)
-				{
-					useProgram(defaultShader);
-					glBindBuffer(GL_ARRAY_BUFFER, ActorsVBO);
-					glBindVertexArray(ActorsVAO);
-					for (size_t actor_i = 0; actor_i < ForegroundActors.size(); actor_i++)
-					{
-						Actor *actor = &ForegroundActors[actor_i];
-						const AnimationFrame *frame = actor->GetFrame();
-						if (frame != nullptr)
-						{
-							vec2 Hotspot = frame->getHotSpot();
-							SpriteCoords coords = Sprites[frame->getIndex()];
-							vec2 position = actor->GetPosition();
-							position += vec2(Hotspot.x, coords.height + Hotspot.y - 20);
-							vertex actorVerts[4];
-
-							actorVerts[0].x = position.x;
-							actorVerts[0].y = position.y;
-							actorVerts[0].z = depth;
-							actorVerts[0].s = (((float)coords.x)/(float)SPRITESHEET_SIZE);
-							actorVerts[0].t = (((float)(coords.y))/(float)SPRITESHEET_SIZE);
-
-							actorVerts[1].x = position.x;
-							actorVerts[1].y = position.y + coords.height;
-							actorVerts[1].z = depth;
-							actorVerts[1].s = (((float)(coords.x))/(float)SPRITESHEET_SIZE);
-							actorVerts[1].t = (((float)coords.y + coords.height) / (float)SPRITESHEET_SIZE);
-
-							actorVerts[2].x = position.x + (coords.width);
-							actorVerts[2].y = position.y + coords.height;
-							actorVerts[2].z = depth;
-							actorVerts[2].s = (((float)(coords.x + coords.width))/(float)SPRITESHEET_SIZE);
-							actorVerts[2].t = (((float)coords.y + coords.height) / (float)SPRITESHEET_SIZE);
-
-							actorVerts[3].x = position.x + (coords.width);
-							actorVerts[3].y = position.y;
-							actorVerts[3].z = depth;
-							actorVerts[3].s = (((float)coords.x + coords.width)/(float)SPRITESHEET_SIZE);
-							actorVerts[3].t = (((float)(coords.y))/(float)SPRITESHEET_SIZE);
-
-							actor->Update(max(1.0f / 60.0f, sinceLastUpdate));
-							
-							if(actor->GetDestroyActor())
-							{
-								ForegroundActors[actor_i] = ForegroundActors.back();
-								ForegroundActors.pop_back();
-							}
-						
-							glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(vertex), actorVerts, GL_STREAM_DRAW);
-							glDrawArrays(GL_QUADS, 0, 4);
-						}
-					}
-				}
-
-				glBindTexture(GL_TEXTURE_2D, Tilesheet);
-			}
-
-			#pragma endregion Draw the Sprite Layer
+			SDL_Delay((uint32_t)(makeUpTime));
 		}
-
-		#pragma endregion Draw the Layers
-
-		#pragma region Draw the HUD
-
-		useProgram(defaultShader);
-		
-		glBindTexture(GL_TEXTURE_2D, SpriteSheets[0]);
-		float depth = (float)level->GetLayerZ(3);
-		int LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(3));
-		int LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(3));
-
-		float modelview[16];
-		mat4::translate((float)LayerXOffset, (float)LayerYOffset, 0.0f).getData(modelview);
-
-		setUniformMatrix4fv("modelview", 1, GL_FALSE, modelview);
-		setUniformMatrix4fv("projection", 1, GL_FALSE, renderingProjectionMatrix);
-		setUniform4f("VertexColor", 1, 1, 1, 1);
-		setUniform1i("texture", 0);
-
-		DrawText(anims->GetAnimSet(ANIM_SET_MENU)->GetAnim(ANIM_SPRITEFONT_LARGE), &Sprites, vec2(7, 2), Left, "%07d", player->GetScore());
-		
-		const AnimationFrame *animFrame = anims->GetAnimSet(ANIM_SET_ITEMS)->GetAnim(ANIM_HEART)->GetFrame(0);
-		DrawHealth(player->GetHealth(), Sprites[animFrame->getIndex()], (ASPECT_RATIO * 480.0f) - 8, 3, Right);
-
-		const Animation *anim = anims->GetAnimSet(ANIM_SET_HEADS)->GetAnim(ANIM_HEAD_JAZZ);
-		animFrame = anim->GetFrame((int)floor(anim->GetFrameRate() * timeElapsed) % anim->GetFrameCount());
-		DrawLives(player->GetLives(), Sprites[animFrame->getIndex()], anims->GetAnimSet(ANIM_SET_MENU)->GetAnim(ANIM_SPRITEFONT_LARGE), &Sprites, 4, 476);
-		
-		if (showFPS)
-		{
-			DrawText(anims->GetAnimSet(ANIM_SET_MENU)->GetAnim(ANIM_SPRITEFONT_SMALL), &Sprites, vec2(7, 32), Left, "FPS: %2.2f", 1.0f / sinceLastUpdate);
-		}
-
- 		#pragma endregion Draw the HUD
-
-		#pragma region Draw the Frame to the Window
-
-		useProgram(defaultShader);
-		glColor3f(1, 1, 1);
-		glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
-		glClear(GL_DEPTH_BUFFER_BIT);
-		
-		glBindTexture(GL_TEXTURE_2D, framebufferTexture);
-
-		setUniform4f("VertexColor", 1, 1, 1, 1);
-		setUniformMatrix4fv("modelview", 1, GL_FALSE, identityMatrix);
-		setUniformMatrix4fv("projection", 1, GL_FALSE, framebufferProjectionMatrix);
-		setUniform1i("texture", 0);
-
-		glBindBuffer(GL_ARRAY_BUFFER, framebufferVBO);
-		glBindVertexArray(framebufferVAO);
-		glDrawArrays(GL_QUADS, 0, 4);
-
-		#pragma endregion Draw the Frame to the Window
-
-		#pragma region Update Control State
-
-		SDL_Event e;
-		while (SDL_PollEvent(&e))
-		{
-			switch (e.type)
-			{
-			case SDL_QUIT:
-				quit = true;
-				break;
-			case SDL_KEYDOWN:
-				keyboard[e.key.keysym.sym] = true;
-				break;
-			case SDL_KEYUP:
-				keyboard[e.key.keysym.sym] = false;
-				break;
-			case SDL_CONTROLLERBUTTONDOWN:
-				joystick[e.cbutton.button] = true;
-				break;
-			case SDL_CONTROLLERBUTTONUP:
-				joystick[e.cbutton.button] = false;
-				break;
-			}
-		}
-
-		map<Control, bool> ControlState;
-		ControlState[LEFT] = false;
-		ControlState[RIGHT] = false;
-		ControlState[UP] = false;
-		ControlState[DOWN] = false;
-		ControlState[JUMP] = false;
-		ControlState[SHOOT] = false;
-		ControlState[RUN] = false;
-
-		for (multimap<Control, uint32_t>::iterator i = KeyBindings.begin(); i != KeyBindings.end(); i++)
-			ControlState[LEFT] |= ((i->first == LEFT) ? keyboard[i->second] : false);
-		for (multimap<Control, uint32_t>::iterator i = JoyBindings.begin(); i != JoyBindings.end(); i++)
-			ControlState[LEFT] |= ((i->first == LEFT) ? joystick[i->second] : false);
-		for (multimap<Control, uint32_t>::iterator i = KeyBindings.begin(); i != KeyBindings.end(); i++)
-			ControlState[RIGHT] |= ((i->first == RIGHT) ? keyboard[i->second] : false);
-		for (multimap<Control, uint32_t>::iterator i = JoyBindings.begin(); i != JoyBindings.end(); i++)
-			ControlState[RIGHT] |= ((i->first == RIGHT) ? joystick[i->second] : false);
-		for (multimap<Control, uint32_t>::iterator i = KeyBindings.begin(); i != KeyBindings.end(); i++)
-			ControlState[UP] |= ((i->first == UP) ? keyboard[i->second] : false);
-		for (multimap<Control, uint32_t>::iterator i = JoyBindings.begin(); i != JoyBindings.end(); i++)
-			ControlState[UP] |= ((i->first == UP) ? joystick[i->second] : false);
-		for (multimap<Control, uint32_t>::iterator i = KeyBindings.begin(); i != KeyBindings.end(); i++)
-			ControlState[DOWN] |= ((i->first == DOWN) ? keyboard[i->second] : false);
-		for (multimap<Control, uint32_t>::iterator i = JoyBindings.begin(); i != JoyBindings.end(); i++)
-			ControlState[DOWN] |= ((i->first == DOWN) ? joystick[i->second] : false);
-		for (multimap<Control, uint32_t>::iterator i = KeyBindings.begin(); i != KeyBindings.end(); i++)
-			ControlState[JUMP] |= ((i->first == JUMP) ? keyboard[i->second] : false);
-		for (multimap<Control, uint32_t>::iterator i = JoyBindings.begin(); i != JoyBindings.end(); i++)
-			ControlState[JUMP] |= ((i->first == JUMP) ? joystick[i->second] : false);
-		for (multimap<Control, uint32_t>::iterator i = KeyBindings.begin(); i != KeyBindings.end(); i++)
-			ControlState[SHOOT] |= ((i->first == SHOOT) ? keyboard[i->second] : false);
-		for (multimap<Control, uint32_t>::iterator i = JoyBindings.begin(); i != JoyBindings.end(); i++)
-			ControlState[SHOOT] |= ((i->first == SHOOT) ? joystick[i->second] : false);
-		for (multimap<Control, uint32_t>::iterator i = KeyBindings.begin(); i != KeyBindings.end(); i++)
-			ControlState[RUN] |= ((i->first == RUN) ? keyboard[i->second] : false);
-		for (multimap<Control, uint32_t>::iterator i = JoyBindings.begin(); i != JoyBindings.end(); i++)
-			ControlState[RUN] |= ((i->first == RUN) ? joystick[i->second] : false);
-
-		#pragma endregion Update Control State
-
-		#pragma region Update Player
-
-		player->Update(max(1.0f / 60.0f, sinceLastUpdate), ControlState);
-		if(player->GetState() == BUTTSTOMP)
-		{
-			vec2 playerPos = player->GetPosition();
-			int tileXCoord = (int)Math::Floor((playerPos.x - 12) / 32);
-			int tileYCoord = (int)Math::Floor(playerPos.y / 32);
-			J2L_Event event = level->GetEvents(tileXCoord, tileYCoord + 1);
-			if((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
-				level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord + 1) + tileXCoord, 1);
-			tileXCoord = (int)Math::Floor((playerPos.x + 12) / 32);
-			event = level->GetEvents(tileXCoord, tileYCoord + 1);
-			if ((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
-				level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord + 1) + tileXCoord, 1);
-		}
-		else if (player->GetState() == HIGHJUMP)
-		{
-			vec2 playerPos = player->GetPosition();
-			int tileXCoord = (int)Math::Floor((playerPos.x - 12) / 32);
-			int tileYCoord = (int)Math::Floor(playerPos.y / 32);
-			if (tileYCoord > 0)
-			{
-				J2L_Event event = level->GetEvents(tileXCoord, tileYCoord - 1);
-				if ((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
-					level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord - 1) + tileXCoord, 1);
-				tileXCoord = (int)Math::Floor((playerPos.x + 12) / 32);
-				event = level->GetEvents(tileXCoord, tileYCoord - 1);
-				if ((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
-					level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord - 1) + tileXCoord, 1);
-			}
-		}
-		else if (player->GetState() == DEAD)
-		{
-			if (player->GetLives() == 0)
-			{
-				quit = true;
-			}
-			else
-			{
-				player->AddLives(255);
-				RestartLevel();
-			}
-		}
-		else if (player->GetState() == LEVEL_ENDED)
-		{
-			GotoNextLevel();
-		}
-
-
-		#pragma endregion Update Player
-		
-		#pragma region Sleep the rest of the frame interval
-
-		if (sinceLastUpdate < (1.0f / 60.0f))
-		{
-			SDL_Delay((uint32_t)(1000 * ((1.0f / 60.0f) - sinceLastUpdate)));
-		}
-
-		#pragma endregion Sleep the rest of the frame interval
-
-		#pragma region Check if player is trying to close the game
-
-		for (auto i = KeyBindings.find(MENU); i != KeyBindings.end(); i++)
-		{
-			if (keyboard[i->second])
-				quit = true;
-		}
-		for (auto i = JoyBindings.find(MENU); i != JoyBindings.end(); i++)
-		{
-			if (joystick[i->second])
-				quit = true;
-		}
-
-		#pragma endregion Check if the player is trying to close the game
-
-#ifdef DEBUG_KEYS
-		if (keyboard[SDLK_F1])
-		{
-			keyboard[SDLK_F1] = false;
-			RestartLevel();
-		}
-		if(keyboard[SDLK_F2])
-		{
-			keyboard[SDLK_F2] = false;
-			GotoNextLevel();
-		}
-#endif
 
 		SDL_GL_SwapWindow(window);
 
 		LogAllGLErrors();
 	}
+}
+
+bool Game::Update(const float &timeElapsed)
+{
+	bool quit = false;
+
+	#pragma region Update Control State
+
+	SDL_Event e;
+	while (SDL_PollEvent(&e))
+	{
+		switch (e.type)
+		{
+		case SDL_QUIT:
+			quit = true;
+			break;
+		case SDL_KEYDOWN:
+			keyboard[e.key.keysym.sym] = true;
+			break;
+		case SDL_KEYUP:
+			keyboard[e.key.keysym.sym] = false;
+			break;
+		case SDL_CONTROLLERBUTTONDOWN:
+			joystick[e.cbutton.button] = true;
+			break;
+		case SDL_CONTROLLERBUTTONUP:
+			joystick[e.cbutton.button] = false;
+			break;
+		}
+	}
+
+	map<Control, bool> ControlState;
+
+	for (const Control &c : { LEFT, RIGHT, UP, DOWN, JUMP, SHOOT, RUN, MENU })
+	{
+		ControlState[c] = false;
+		for (multimap<Control, uint32_t>::iterator i = KeyBindings.begin(); i != KeyBindings.end(); i++)
+		{
+			ControlState[c] |= ((i->first == c) ? keyboard[i->second] : false);
+		}
+		for (multimap<Control, uint32_t>::iterator i = JoyBindings.begin(); i != JoyBindings.end(); i++)
+		{
+			ControlState[c] |= ((i->first == c) ? joystick[i->second] : false);
+		}
+	}
+
+	#pragma endregion Update Control State
+
+	#pragma region Update Player
+
+	player->Update(max(1.0f / 60.0f, timeElapsed), ControlState);
+	
+	#pragma endregion Update Player
+
+	#pragma region Update Background Actors
+
+	for (size_t actor_i = 0; actor_i < BackgroundActors.size(); actor_i++)
+	{
+		Actor *actor = &BackgroundActors[actor_i];
+
+		actor->Update(max(1.0f / 60.0f, timeElapsed));
+		bool consumed = false;
+		if (actor->CheckCollision(player, Sprites))
+		{
+			consumed = player->CollidedWithActor(*actor);
+
+			if (consumed)
+			{
+				player->AddPoints(actor->GetPointValue());
+			}
+		}
+
+		if (consumed || actor->GetDestroyActor())
+		{
+			if (actor->AddsSparkleOnDeath())
+			{
+				vec2 sparklePos = actor->GetPosition();
+				ForegroundActors.push_back(Actor(level, tileset, vec2(sparklePos.x, sparklePos.y + 16), Sparkle, anims, 0));
+			}
+			BackgroundActors[actor_i] = BackgroundActors.back();
+			BackgroundActors.pop_back();
+			actor_i--;
+		}
+	}
+
+	#pragma endregion Update Background Actors
+
+	#pragma region Update Foreground Actors
+
+	for (size_t actor_i = 0; actor_i < ForegroundActors.size(); actor_i++)
+	{
+		auto actor = &ForegroundActors[actor_i];
+		actor->Update(max(1.0f / 60.0f, timeElapsed));
+
+		if (actor->GetDestroyActor())
+		{
+			ForegroundActors[actor_i] = ForegroundActors.back();
+			ForegroundActors.pop_back();
+		}
+	}
+
+	#pragma endregion Update Background Actors
+
+	vec2 playerPos;
+	int tileXCoord, tileYCoord;
+	J2L_Event event;
+
+	switch (player->GetState())
+	{
+	case BUTTSTOMP:
+		playerPos = player->GetPosition();
+		tileXCoord = (int)Math::Floor((playerPos.x - 12) / 32);
+		tileYCoord = (int)Math::Floor(playerPos.y / 32);
+		event = level->GetEvents(tileXCoord, tileYCoord + 1);
+		if ((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
+			level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord + 1) + tileXCoord, 1);
+		tileXCoord = (int)Math::Floor((playerPos.x + 12) / 32);
+		event = level->GetEvents(tileXCoord, tileYCoord + 1);
+		if ((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
+			level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord + 1) + tileXCoord, 1);
+		break;
+	case HIGHJUMP:
+		playerPos = player->GetPosition();
+		tileXCoord = (int)Math::Floor((playerPos.x - 12) / 32);
+		tileYCoord = (int)Math::Floor(playerPos.y / 32);
+		if (tileYCoord > 0)
+		{
+			event = level->GetEvents(tileXCoord, tileYCoord - 1);
+			if ((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
+				level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord - 1) + tileXCoord, 1);
+			tileXCoord = (int)Math::Floor((playerPos.x + 12) / 32);
+			event = level->GetEvents(tileXCoord, tileYCoord - 1);
+			if ((event.EventID == ButtStompScenery) || (event.EventID == DestructScenery))
+				level->SetTileFrame(level->GetLayerWidth(3) * (tileYCoord - 1) + tileXCoord, 1);
+		}
+		break;
+	case DEAD:
+		if (player->GetLives() == 0)
+		{
+			quit = true;
+		}
+		else
+		{
+			player->AddLives(255);
+			RestartLevel();
+		}
+		break;
+	case LEVEL_ENDED:
+		GotoNextLevel();
+		break;
+	}
+
+#pragma region Check if player is trying to close the game
+
+	if (ControlState[MENU])
+		quit = true;
+
+#pragma endregion Check if the player is trying to close the game
+
+#ifdef DEBUG_KEYS
+
+	if (keyboard[SDLK_F1])
+	{
+		keyboard[SDLK_F1] = false;
+		RestartLevel();
+	}
+	if (keyboard[SDLK_F2])
+	{
+		keyboard[SDLK_F2] = false;
+		GotoNextLevel();
+	}
+
+#endif
+
+	return quit;
+}
+
+void Game::Draw(const float &timeElapsed)
+{
+	int OffsetX = (int)Math::Round(min(max(0.0f, player->GetPosition().x - (ASPECT_RATIO * 240.0f)), (level->GetLayerWidth(3)  * 32.0f) - (480.0f * ASPECT_RATIO)));
+	int OffsetY = (int)Math::Round(min(max(0.0f, player->GetPosition().y - 261.0f), (level->GetLayerHeight(3) * 32.0f) - 480.0f));
+
+	glBindFramebuffer(GL_FRAMEBUFFER_EXT, framebuffer);
+	
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	SDL_Rect s;
+	s.x = 0;
+	s.y = 0;
+
+	glBindTexture(GL_TEXTURE_2D, Tilesheet);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+
+	#pragma region Draw the Layers
+
+	glBindTexture(GL_TEXTURE_2D, Tilesheet);
+	for (int i = 7; i >= 0; i--)
+	{
+		useProgram(defaultShader);
+
+		setUniform4f("VertexColor", 1, 1, 1, 1);
+		setUniform1i("texture", 0);
+		setUniformMatrix4fv("projection", 1, GL_FALSE, renderingProjectionMatrix);
+
+		if ((LayerVertexCount[i] > 0) && (player->GetHealth() > 0))
+		{
+			bool TileX = level->IsLayerTiledHorizontally(i);
+			bool TileY = level->IsLayerTiledVertically(i);
+			bool limitToVisibleRegion = level->IsLayerLimitedToVisibleRegion(i);
+			TileY = TileY && !limitToVisibleRegion;
+			float LayerWidth = 32.0f * level->GetLayerWidth(i);
+			float LayerHeight = 32.0f * level->GetLayerHeight(i);
+			int LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(i) + level->GetLayerAutoXSpeed(i));
+			int LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(i) + level->GetLayerAutoYSpeed(i));
+
+			glBindBuffer(GL_ARRAY_BUFFER, Layers[i]);
+			glBindVertexArray(LayerVAOs[i]);
+
+			if (!TileX && !TileY)
+			{
+				mat4::translate(float(LayerXOffset), float(LayerYOffset), 0.0f).getData(modelview);
+				setUniformMatrix4fv("modelview", 1, GL_FALSE, modelview);
+				glDrawArrays(GL_QUADS, 0, LayerVertexCount[i]);
+			}
+			else if (TileX && TileY)
+			{
+				int LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(i)) + ((level->GetLayerWidth(3) - level->GetLayerWidth(i)));
+				int LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(i)) + ((level->GetLayerHeight(i) - level->GetLayerHeight(3)));
+				int startx = 0;
+				while ((startx * LayerWidth + LayerXOffset) > 0)
+					startx--;
+				int starty = 0;
+				while ((starty * LayerHeight + LayerXOffset) > 0)
+					starty--;
+				for (int j = starty; (LayerHeight * j) + LayerYOffset < 480; j++)
+				{
+					for (int k = startx; ((LayerWidth * k) + LayerXOffset) < (ASPECT_RATIO * 480); k++)
+					{
+						mat4::translate(LayerXOffset + (k * LayerWidth), LayerYOffset + (j * LayerHeight), 0.0f).getData(modelview);
+						setUniformMatrix4fv("modelview", 1, GL_FALSE, modelview);
+						glDrawArrays(GL_QUADS, 0, LayerVertexCount[i]);
+					}
+				}
+			}
+			else if (TileX && !TileY)
+			{
+				int LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(i));
+				int LayerYOffset = (int)Math::Round((limitToVisibleRegion) ? (480 - (level->GetLayerHeight(i) * 32)) : (-OffsetY * level->GetLayerYSpeed(i)));
+				int startx = 0;
+				while ((startx * LayerWidth + LayerXOffset) > 0)
+					startx--;
+				for (int k = startx; ((LayerWidth * k) + LayerXOffset) < (ASPECT_RATIO * 480); k++)
+				{
+					mat4::translate((float)(LayerXOffset + (k * LayerWidth)), (float)LayerYOffset, 0.0f).getData(modelview);
+					setUniformMatrix4fv("modelview", 1, GL_FALSE, modelview);
+					glDrawArrays(GL_QUADS, 0, LayerVertexCount[i]);
+				}
+			}
+			else if (TileY && !TileX)
+			{
+				int LayerXOffset = (int)Math::Round((limitToVisibleRegion) ? 0 : -OffsetX * level->GetLayerXSpeed(i));
+				int LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(i));
+				int starty = 0;
+				while ((starty * LayerHeight + LayerXOffset) > 0)
+					starty--;
+				for (int j = starty; (LayerHeight * j) + LayerYOffset < 480; j++)
+				{
+					mat4::translate((float)LayerXOffset, (float)LayerYOffset + (j * LayerHeight), 0.0f).getData(modelview);
+					setUniformMatrix4fv("modelview", 1, GL_FALSE, modelview);
+					glDrawArrays(GL_QUADS, 0, LayerVertexCount[i]);
+				}
+			}
+		}
+	}
+
+	#pragma endregion Draw the Layers
+
+	#pragma region Draw the Sprite Layer
+
+	glBindTexture(GL_TEXTURE_2D, SpriteSheets[0]);
+	float depth = SPRITE_LAYER_DEPTH;
+	int LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(3));
+	int LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(3));
+	mat4::translate((float)LayerXOffset, (float)LayerYOffset, 0.0f).getData(modelview);
+
+	if (player->GetHealth() > 0)
+	{
+		glBindBuffer(GL_ARRAY_BUFFER, ActorsVBO);
+		glBindVertexArray(ActorsVAO);
+		for (size_t actor_i = 0; actor_i < BackgroundActors.size(); actor_i++)
+		{
+			Actor *actor = &BackgroundActors[actor_i];
+			GLuint actorProgram = defaultShader;
+
+			float white[] = { 1, 1, 1, 1 };
+			const float *currentColor = white;
+
+			if (actor->GetEventID() == RedGemPlus1)
+			{
+				actorProgram = colorizeShader;
+				currentColor = redGemColor;
+			}
+			else if (actor->GetEventID() == GreenGemPlus1)
+			{
+				actorProgram = colorizeShader;
+				currentColor = greenGemColor;
+			}
+			else if (actor->GetEventID() == BlueGemPlus1)
+			{
+				actorProgram = colorizeShader;
+				currentColor = blueGemColor;
+			}
+			else if (actor->GetEventID() == PurpleGemPlus1)
+			{
+				actorProgram = colorizeShader;
+				currentColor = purpleGemColor;
+			}
+
+			useProgram(actorProgram);
+
+			setUniform4fv("VertexColor", 1, currentColor);
+			setUniformMatrix4fv("modelview", 1, GL_FALSE, modelview);
+			setUniformMatrix4fv("projection", 1, GL_FALSE, renderingProjectionMatrix);
+			setUniform1i("texture", 0);
+
+			const AnimationFrame *frame = actor->GetFrame();
+			if (frame != nullptr)
+			{
+
+				SpriteCoords coords = Sprites[frame->getIndex()];
+				vec2 position = actor->GetPosition();
+				vertex actorVerts[4];
+
+				bool isFlippedX = false;
+				bool isFlippedY = false;
+				if (actor->IsFlipped())
+				{
+					switch (actor->GetEventID())
+					{
+					case RedSpring:
+					case GreenSpring:
+					case BlueSpring:
+						isFlippedY = true;
+						break;
+					case HorRedSpring:
+					case HorGreenSpring:
+					case HorBlueSpring:
+						isFlippedX = true;
+						break;
+					}
+				}
+
+				if (actor->RenderFromColdSpot())
+				{
+					vec2 Coldspot = frame->getColdSpot();
+					position += vec2(0, 32);
+					position += vec2(Coldspot.x, Coldspot.y);
+				}
+				else
+				{
+					vec2 Hotspot = frame->getHotSpot();
+					position += vec2(Hotspot.x, Hotspot.y);
+				}
+				//if (isFlippedY)
+				//	/*position.y = position.y - 32 + coords.height;*/
+				if (isFlippedX)
+					position.x += 32 - coords.width;
+
+				actorVerts[0].x = position.x;
+				actorVerts[0].y = position.y;
+				actorVerts[0].z = depth;
+				actorVerts[0].s = isFlippedX ? (((float)coords.x + coords.width) / (float)SPRITESHEET_SIZE) : (((float)coords.x) / (float)SPRITESHEET_SIZE);
+				actorVerts[0].t = (((float)coords.y) / (float)SPRITESHEET_SIZE);
+
+				actorVerts[1].x = position.x;
+				actorVerts[1].y = position.y + coords.height;
+				actorVerts[1].z = depth;
+				actorVerts[1].s = isFlippedX ? (((float)(coords.x + coords.width)) / (float)SPRITESHEET_SIZE) : (((float)(coords.x)) / (float)SPRITESHEET_SIZE);
+				actorVerts[1].t = (((float)coords.y + coords.height) / (float)SPRITESHEET_SIZE);
+
+				actorVerts[2].x = position.x + (coords.width);
+				actorVerts[2].y = position.y + coords.height;
+				actorVerts[2].z = depth;
+				actorVerts[2].s = isFlippedX ? (((float)(coords.x)) / (float)SPRITESHEET_SIZE) : (((float)(coords.x + coords.width)) / (float)SPRITESHEET_SIZE);
+				actorVerts[2].t = (((float)coords.y + coords.height) / (float)SPRITESHEET_SIZE);
+
+				actorVerts[3].x = position.x + (coords.width);
+				actorVerts[3].y = position.y;
+				actorVerts[3].z = depth;
+				actorVerts[3].s = isFlippedX ? (((float)coords.x) / (float)SPRITESHEET_SIZE) : (((float)coords.x + coords.width) / (float)SPRITESHEET_SIZE);
+				actorVerts[3].t = (((float)(coords.y)) / (float)SPRITESHEET_SIZE);
+
+				glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(vertex), actorVerts, GL_STREAM_DRAW);
+				glDrawArrays(GL_QUADS, 0, 4);
+
+			}
+		}
+	}
+
+	if (!player->IsInvisible())
+	{
+		useProgram(defaultShader);
+
+		glColor4f(1, 1, 1, 1);
+		const AnimationFrame *frame = player->GetSprite();
+		vec2 Hotspot = frame->getHotSpot();
+
+		SpriteCoords coord = Sprites[frame->getIndex()];
+		int flipped = (player->GetFacing() == -1);
+
+		vec2 playerPos = player->GetPosition();
+
+#ifdef DRAW_PLAYER_BOUNDING_BOX
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glColor3f(1, 0, 0);
+		vertex BoxVerts[4];
+		BoxVerts[0].x = playerPos.x - 12;
+		BoxVerts[0].y = playerPos.y;
+		BoxVerts[0].z = depth;
+		BoxVerts[1].x = playerPos.x - 12;
+		BoxVerts[1].y = playerPos.y - 30;
+		BoxVerts[1].z = depth;
+		BoxVerts[2].x = playerPos.x + 12;
+		BoxVerts[2].y = playerPos.y - 30;
+		BoxVerts[2].z = depth;
+		BoxVerts[3].x = playerPos.x + 12;
+		BoxVerts[3].y = playerPos.y;
+		BoxVerts[3].z = depth;
+		glBindBuffer(GL_ARRAY_BUFFER, playerVBO);
+		glBufferData(GL_ARRAY_BUFFER, 20 * sizeof(float), BoxVerts, GL_STREAM_DRAW);
+		glVertexPointer(3, GL_FLOAT, 5 * sizeof(float), (void*)0);
+		glDrawArrays(GL_QUADS, 0, 4);
+		glBindTexture(GL_TEXTURE_2D, SpriteSheets[0]);
+		glColor3f(1, 1, 1);
+#endif
+
+		if (!flipped)
+			playerPos += vec2(Hotspot.x, coord.height + Hotspot.y - 20);//Hotspot.y);
+		else
+		{
+			playerPos += vec2(-Hotspot.x, coord.height + Hotspot.y - 20);
+			coord.x += coord.width;
+			coord.width *= -1;
+		}
+		vertex PlayerVerts[4];
+		PlayerVerts[0].x = playerPos.x;
+		PlayerVerts[0].y = playerPos.y;
+		PlayerVerts[0].z = depth;
+		PlayerVerts[0].s = ((float)(!flipped) ? coord.x : coord.x + coord.width) / (float)SPRITESHEET_SIZE;
+		PlayerVerts[0].t = ((float)(coord.y + coord.height)) / (float)SPRITESHEET_SIZE;
+		PlayerVerts[1].x = playerPos.x;
+		PlayerVerts[1].y = playerPos.y - coord.height;
+		PlayerVerts[1].z = depth;
+		PlayerVerts[1].s = ((float)(!flipped) ? coord.x : coord.x + coord.width) / (float)SPRITESHEET_SIZE;
+		PlayerVerts[1].t = ((float)(coord.y)) / (float)SPRITESHEET_SIZE;
+		PlayerVerts[2].x = playerPos.x + coord.width;
+		PlayerVerts[2].y = playerPos.y - coord.height;
+		PlayerVerts[2].z = depth;
+		PlayerVerts[2].s = ((float)((!flipped) ? coord.x + coord.width : coord.x)) / (float)SPRITESHEET_SIZE;
+		PlayerVerts[2].t = ((float)(coord.y)) / (float)SPRITESHEET_SIZE;
+		PlayerVerts[3].x = playerPos.x + coord.width;
+		PlayerVerts[3].y = playerPos.y;
+		PlayerVerts[3].z = depth;
+		PlayerVerts[3].s = ((float)((!flipped) ? coord.x + coord.width : coord.x)) / (float)SPRITESHEET_SIZE;
+		PlayerVerts[3].t = ((float)coord.y + coord.height) / (float)SPRITESHEET_SIZE;
+
+		setUniform4f("VertexColor", 1, 1, 1, 1);
+		setUniformMatrix4fv("modelview", 1, GL_FALSE, modelview);
+		setUniformMatrix4fv("projection", 1, GL_FALSE, renderingProjectionMatrix);
+		setUniform1i("texture", 0);
+
+		glBindVertexArray(playerVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, playerVBO);
+		glBufferData(GL_ARRAY_BUFFER, 20 * sizeof(float), PlayerVerts, GL_STREAM_DRAW);
+		glDrawArrays(GL_QUADS, 0, 4);
+	}
+
+	if (player->GetHealth() > 0)
+	{
+		useProgram(defaultShader);
+		glBindBuffer(GL_ARRAY_BUFFER, ActorsVBO);
+		glBindVertexArray(ActorsVAO);
+		for (size_t actor_i = 0; actor_i < ForegroundActors.size(); actor_i++)
+		{
+			Actor *actor = &ForegroundActors[actor_i];
+			const AnimationFrame *frame = actor->GetFrame();
+			if (frame != nullptr)
+			{
+				vec2 Hotspot = frame->getHotSpot();
+				SpriteCoords coords = Sprites[frame->getIndex()];
+				vec2 position = actor->GetPosition();
+				position += vec2(Hotspot.x, coords.height + Hotspot.y - 20);
+				vertex actorVerts[4];
+
+				actorVerts[0].x = position.x;
+				actorVerts[0].y = position.y;
+				actorVerts[0].z = depth;
+				actorVerts[0].s = (((float)coords.x) / (float)SPRITESHEET_SIZE);
+				actorVerts[0].t = (((float)(coords.y)) / (float)SPRITESHEET_SIZE);
+
+				actorVerts[1].x = position.x;
+				actorVerts[1].y = position.y + coords.height;
+				actorVerts[1].z = depth;
+				actorVerts[1].s = (((float)(coords.x)) / (float)SPRITESHEET_SIZE);
+				actorVerts[1].t = (((float)coords.y + coords.height) / (float)SPRITESHEET_SIZE);
+
+				actorVerts[2].x = position.x + (coords.width);
+				actorVerts[2].y = position.y + coords.height;
+				actorVerts[2].z = depth;
+				actorVerts[2].s = (((float)(coords.x + coords.width)) / (float)SPRITESHEET_SIZE);
+				actorVerts[2].t = (((float)coords.y + coords.height) / (float)SPRITESHEET_SIZE);
+
+				actorVerts[3].x = position.x + (coords.width);
+				actorVerts[3].y = position.y;
+				actorVerts[3].z = depth;
+				actorVerts[3].s = (((float)coords.x + coords.width) / (float)SPRITESHEET_SIZE);
+				actorVerts[3].t = (((float)(coords.y)) / (float)SPRITESHEET_SIZE);
+
+				glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(vertex), actorVerts, GL_STREAM_DRAW);
+				glDrawArrays(GL_QUADS, 0, 4);
+			}
+		}
+	}
+
+	#pragma endregion Draw the Sprite Layer
+
+	#pragma region Draw the HUD
+
+	useProgram(defaultShader);
+
+	glBindTexture(GL_TEXTURE_2D, SpriteSheets[0]);
+	depth = (float)level->GetLayerZ(3);
+	LayerXOffset = (int)Math::Round(-OffsetX * level->GetLayerXSpeed(3));
+	LayerYOffset = (int)Math::Round(-OffsetY * level->GetLayerYSpeed(3));
+
+	float modelview[16];
+	mat4::translate((float)LayerXOffset, (float)LayerYOffset, 0.0f).getData(modelview);
+
+	setUniformMatrix4fv("modelview", 1, GL_FALSE, modelview);
+	setUniformMatrix4fv("projection", 1, GL_FALSE, renderingProjectionMatrix);
+	setUniform4f("VertexColor", 1, 1, 1, 1);
+	setUniform1i("texture", 0);
+
+	DrawText(anims->GetAnimSet(ANIM_SET_MENU)->GetAnim(ANIM_SPRITEFONT_LARGE), &Sprites, vec2(7, 2), Left, "%07d", player->GetScore());
+
+	const AnimationFrame *animFrame = anims->GetAnimSet(ANIM_SET_ITEMS)->GetAnim(ANIM_HEART)->GetFrame(0);
+	DrawHealth(player->GetHealth(), Sprites[animFrame->getIndex()], (ASPECT_RATIO * 480.0f) - 8, 3, Right);
+
+	const Animation *anim = anims->GetAnimSet(ANIM_SET_HEADS)->GetAnim(ANIM_HEAD_JAZZ);
+	animFrame = anim->GetFrame((int)floor(anim->GetFrameRate() * timeElapsed) % anim->GetFrameCount());
+	DrawLives(player->GetLives(), Sprites[animFrame->getIndex()], anims->GetAnimSet(ANIM_SET_MENU)->GetAnim(ANIM_SPRITEFONT_LARGE), &Sprites, 4, 476);
+
+	if (showFPS)
+	{
+		DrawText(anims->GetAnimSet(ANIM_SET_MENU)->GetAnim(ANIM_SPRITEFONT_SMALL), &Sprites, vec2(7, 32), Left, "FPS: %2.2f", 1.0f / timeElapsed);
+	}
+
+	#pragma endregion Draw the HUD
+
+	#pragma region Draw the Frame to the Window
+
+	useProgram(defaultShader);
+	glColor3f(1, 1, 1);
+	glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
+	glBindTexture(GL_TEXTURE_2D, framebufferTextures[0]);
+	
+	setUniform4f("VertexColor", 1, 1, 1, 1);
+	setUniformMatrix4fv("modelview", 1, GL_FALSE, identityMatrix);
+	setUniformMatrix4fv("projection", 1, GL_FALSE, framebufferProjectionMatrix);
+	setUniform1i("texture", 0);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, framebufferVBO);
+	glBindVertexArray(framebufferVAO);
+	glDrawArrays(GL_QUADS, 0, 4);
+	
+	#pragma endregion Draw the Frame to the Window
 }
 
 void Game::BuildLevelVBOs(Level *level)
@@ -1339,7 +1354,7 @@ void Game::BuildLevelVBOs(Level *level)
 
 			uint32_t layerHeight = level->GetLayerHeight(layer);
 			uint32_t layerWidth = level->GetLayerWidth(layer);
-			int32_t layerZ = level->GetLayerZ(layer);
+			int32_t layerZ = (8 - layer);
 			for (uint32_t t = 0; t < layerHeight; t++)
 			{
 				for (uint32_t s = 0; s < layerWidth; s++)
@@ -1426,7 +1441,7 @@ void Game::RecalculateLevelVBOs(Level *level, const float &timeElapsed)
 		{
 			uint32_t layerHeight = level->GetLayerHeight(layer);
 			uint32_t layerWidth = level->GetLayerWidth(layer);
-			int32_t layerZ = level->GetLayerZ(layer);
+			int32_t layerZ = (8-layer);
 			glBindVertexArray(LayerVAOs[layer]);
 			glBindBuffer(GL_ARRAY_BUFFER, Layers[layer]);
 			for (uint32_t t = 0; t < layerHeight; t++)
@@ -1585,16 +1600,28 @@ void Game::CreateSpritesheets()
 void Game::PrepareFramebuffer()
 {
 	printf("Preparing Framebuffer\n");
-	glGenTextures(1, &framebufferTexture);
-	glBindTexture(GL_TEXTURE_2D, framebufferTexture);
+	glGenTextures(2, framebufferTextures);
+
+	// Generate the Color Buffer
+	glBindTexture(GL_TEXTURE_2D, framebufferTextures[0]);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (int)(ASPECT_RATIO * 480), 480, 0, GL_BGRA, GL_UNSIGNED_BYTE, nullptr);
+
+	// Generate the Depth Buffer
+	glBindTexture(GL_TEXTURE_2D, framebufferTextures[1]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, (int)(ASPECT_RATIO * 480), 480, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, nullptr);
+
 	glGenFramebuffers(1, &framebuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER_EXT, framebuffer);
-	glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, framebufferTexture, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, framebufferTextures[0], 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, framebufferTextures[1], 0);
 
 	glGenBuffers(1, &framebufferVBO);
 	glGenVertexArrays(1, &framebufferVAO);
@@ -1602,7 +1629,7 @@ void Game::PrepareFramebuffer()
 	glBindVertexArray(framebufferVAO);
 	SetupVertexAttribArrays();
 	glBindVertexArray(0);
-
+	
 	vertex framebufferVerts[4];
 	framebufferVerts[0].x = 0;
 	framebufferVerts[0].y = 0;
@@ -1626,15 +1653,15 @@ void Game::PrepareFramebuffer()
 	framebufferVerts[3].t = 1;
 
 	glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(vertex), framebufferVerts, GL_STATIC_DRAW);
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void GetShaderLocations(const GLuint &shader)
+map<string, GLuint> GetShaderLocations(const GLuint &shader)
 {
-	const char *uniforms[] = { "VertexColor", "modelview", "projection", "texture" };
 	map<string, GLuint> locations;
-	for (auto i = 0; i < 4; i++)
-		locations[uniforms[i]] = glGetUniformLocation(shader, uniforms[i]);
-	shaderLocations[shader] = locations;
+	for (auto uniform : { "VertexColor", "modelview", "projection", "texture" })
+		locations[uniform] = glGetUniformLocation(shader, uniform);
+	return locations;
 }
 
 void LoadShaders()
@@ -1690,8 +1717,8 @@ void LoadShaders()
 		System::LogError("Error linking colorize shader 4:\n%s\n", log.c_str());
 	}
 
-	GetShaderLocations(defaultShader);
-	GetShaderLocations(colorizeShader);
+	shaderLocations[defaultShader] = GetShaderLocations(defaultShader);
+	shaderLocations[colorizeShader] = GetShaderLocations(colorizeShader);
 }
 
 GLuint GenerateTexture(SDL_Surface *surface)
@@ -1860,7 +1887,7 @@ Game::~Game()
 	glDeleteBuffers(1, &playerVBO);
 	glDeleteVertexArrays(1, &framebufferVAO);
 	glDeleteBuffers(1, &framebufferVBO);
-	glDeleteTextures(1, &framebufferTexture);
+	glDeleteTextures(2, framebufferTextures);
 	for (size_t i = 0; i < SpriteSheets.size(); i++)
 	{
 		glDeleteTextures(1, &SpriteSheets[i]);

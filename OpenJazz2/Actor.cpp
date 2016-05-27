@@ -507,6 +507,9 @@ inline bool HotspotCollision(const Player *player, vec2 hotspot)
 bool Actor::CheckCollision(const Player *player, const map<uint32_t, SpriteCoords> &sprites)
 {
 	const AnimationFrame *aFrame = GetFrame();
+	if (aFrame == nullptr)
+		return false;
+
 	vec2 hotspot = GetPosition();
 	if (RenderFromColdSpot())
 	{

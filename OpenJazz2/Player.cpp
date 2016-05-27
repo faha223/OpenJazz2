@@ -436,13 +436,13 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 {
 	timeSinceStateChanged += dt;
 
-#pragma region Update SpringInfluence Values
+	#pragma region Update SpringInfluence Values
 
 	timeSinceSpringInfluenced += dt;
 	if (timeSinceSpringInfluenced > springInfluenceTimeout)
 		SpringInfluenced = false;
 
-#pragma endregion Update SpringInfluence Values
+	#pragma endregion Update SpringInfluence Values
 
 	float rate = 6.0f;
 	float origVelocityY = Velocity.y;
