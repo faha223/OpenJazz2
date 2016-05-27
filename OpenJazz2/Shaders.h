@@ -22,6 +22,8 @@ class Shaders
 public:
 	static std::string CompileShader(GLenum type, const std::string &shaderSource, GLuint &out);
 	static std::string LinkProgram(const GLuint &vertexShader, const GLuint &fragmentShader, GLuint &program);
+	static std::string GetShaderInfoLog(const GLuint &shader);
+	static std::string GetProgramInfoLog(const GLuint &program);
 };
 
 #endif
