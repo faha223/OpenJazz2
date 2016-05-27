@@ -61,6 +61,7 @@ private:
 	std::string DumpPath;
 	std::string Episode;
 	std::string LevelFile;
+	bool showFPS;
 	std::map<uint32_t, SpriteCoords> Sprites;
 	std::vector<GLuint> SpriteSheets;
 	GLuint playerVBO;

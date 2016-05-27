@@ -831,7 +831,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 				}
 				else
 				{
-					if(!SpringInfluenced)
+					//if(!SpringInfluenced)
 						Velocity.x = ((1.0f - Acceleration) * Velocity.x) + (Acceleration * RunSpeed * Facing);
 				}
 			}
@@ -965,7 +965,7 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 			grounded = true;
 			if (Controls[LEFT] || Controls[RIGHT] || SpringInfluenced)
 			{
-				SetState(Controls[RUN] ? RUNNING : WALKING);
+				SetState((Controls[RUN] || SpringInfluenced) ? RUNNING : WALKING);
 			}
 			else
 			{
@@ -986,8 +986,9 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 			{
 				if (Controls[LEFT] || Controls[RIGHT] || SpringInfluenced)
 				{
-					Facing = Controls[LEFT] ? -1 : 1;
-					Velocity.x = ((1.0f - AirControl) * Velocity.x) + (AirControl * (Controls[RUN] ? RunSpeed : WalkSpeed) * Facing);
+					if(!SpringInfluenced)
+						Facing = Controls[LEFT] ? -1 : 1;
+					Velocity.x = ((1.0f - AirControl) * Velocity.x) + (AirControl * ((Controls[RUN] || SpringInfluenced) ? RunSpeed : WalkSpeed) * Facing);
 				}
 				else
 				{
@@ -1126,7 +1127,6 @@ void Player::Update(const float &dt, map<Control, bool> Controls)
 			}
 			if(Controls[LEFT] || Controls[RIGHT])
 			{
-
 				Facing = (Controls[LEFT]) ? -1 : 1;
 				float swingMag = ((Controls[RUN] ? MaxFastHangingMoveSpeed : MaxHangingMoveSpeed) - MinHangingMoveSpeed);
 				Velocity.x = Facing * ((0.5f * swingMag * Math::Sin(HangingMoveSpeedPeriod * timeSinceStateChanged + HangingMoveSpeedPeriodOffset)) + (0.5f * swingMag) + MinHangingMoveSpeed);
