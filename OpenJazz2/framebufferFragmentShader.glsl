@@ -1,8 +1,6 @@
 #version 400
 
 uniform sampler2D texture;
-uniform int textureWidth;
-uniform int textureHeight;
 
 in vec4 color;
 in vec2 texcoord;
