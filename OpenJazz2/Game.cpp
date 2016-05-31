@@ -21,7 +21,7 @@ float blueGemColor[] = { 76.0f / 255.0f, 190.0f / 255.0f, 1, 0.75f  };
 float purpleGemColor[] = { 190.0f / 255.0f, 76.0f / 255.0f, 190.0f / 255.0f, 0.75f  };
 float renderingProjectionMatrix[16], framebufferProjectionMatrix[16], identityMatrix[16], modelview[16];
 
-GLuint defaultShader, colorizeShader, currentShader = 0;
+GLuint defaultShader, colorizeShader, framebufferShader, currentShader = 0;
 map<GLuint, map<string, GLuint>> shaderLocations;
 GLuint hudVAO = 0;
 GLuint hudVBO = 0;
@@ -63,6 +63,36 @@ in vec4 color;
 in vec2 texcoord;
 
 out vec4 FragColor;
+)glsl";
+
+string glsl_RoughStep = R"glsl(
+float roughStep(float x)
+{
+	float centeredAtZero = ((2.0 * clamp(x, 0.0, 0.99)) - 1.0);
+	float curved = clamp(pow(centeredAtZero, 3) , -0.99, 0.99);
+	return (curved/2.0) + 0.5;
+}
+)glsl";
+
+string glsl_AdjustTexCoords = R"glsl(
+#extension GL_EXT_gpu_shader4 : enable
+vec2 adjustCoords(vec2 coord)
+{
+	vec2 tdim = textureSize2D(texture, 0);
+	vec2 tc = vec2(tdim.x * coord.x, tdim.y * coord.y);
+	float remainderx = tc.x - floor(tc.x);
+	float remaindery = tc.y - floor(tc.y);
+	tc.x = floor(tc.x) + roughStep(remainderx);
+	tc.y = floor(tc.y) + roughStep(remaindery);
+	return vec2(tc.x / tdim.x, tc.y / tdim.y);
+}
+)glsl";
+
+string glsl_FramebufferShaderMain = R"glsl(
+void main()
+{
+	FragColor = texture2D(texture, adjustCoords(texcoord)) * color;
+}
 )glsl";
 
 string glsl_GenericFragmentShaderMain = R"glsl(
@@ -129,7 +159,36 @@ void main()
 
 #pragma endregion Fragment Shader Source
 
-string stringJoin(const string &delim, vector<string> arr)
+#pragma region Helping Structures
+
+enum TextAlignment
+{
+	Left,
+	Center,
+	Right
+};
+
+struct Node
+{
+	SDL_Rect rc;
+	int SpriteID;
+};
+
+#pragma endregion
+
+#pragma region Helper Functions
+
+inline bool _startsWith(const char *a, const char *b)
+{
+	if (strlen(a) < strlen(b))
+		return false;
+	for (size_t i = 0; i < strlen(b); i++)
+		if (a[i] != b[i])
+			return false;
+	return true;
+}
+
+inline string stringJoin(const string &delim, vector<string> arr)
 {
 	if (arr.size() == 0)
 		return "";
@@ -145,7 +204,7 @@ string stringJoin(const string &delim, vector<string> arr)
 	return ss.str();
 }
 
-string trim(const string &str)
+inline string trim(const string &str)
 {
 	int start = -1, end = -1;
 	for (size_t i = 0; i < str.length(); i++)
@@ -181,14 +240,7 @@ string trim(const string &str)
 	return str.substr(start, end - start);
 }
 
-enum TextAlignment
-{
-	Left,
-	Center,
-	Right
-};
-
-void SetupVertexAttribArrays()
+inline void SetupVertexAttribArrays()
 {
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
@@ -196,7 +248,7 @@ void SetupVertexAttribArrays()
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 }
 
-void useProgram(const GLuint &program)
+inline void useProgram(const GLuint &program)
 {
 	if (currentShader != program)
 	{
@@ -205,29 +257,29 @@ void useProgram(const GLuint &program)
 	}
 }
 
-void setUniform4f(const char *uniform, const float &f0, const float &f1, const float &f2, const float &f3)
+inline void setUniform4f(const char *uniform, const float &f0, const float &f1, const float &f2, const float &f3)
 {
 	assert(shaderLocations.find(currentShader) != shaderLocations.end());
 	assert(shaderLocations[currentShader].find(uniform) != shaderLocations[currentShader].end());
 	glUniform4f(shaderLocations[currentShader][uniform], f0, f1, f2, f3);
 }
 
-void setUniform4fv(const char *uniform, const GLsizei &count, const float *v)
+inline void setUniform4fv(const char *uniform, const GLsizei &count, const float *v)
 {
 	glUniform4fv(shaderLocations[currentShader][uniform], count, v);
 }
 
-void setUniform1i(const char *uniform, const GLint &i)
+inline void setUniform1i(const char *uniform, const GLint &i)
 {
 	glUniform1i(shaderLocations[currentShader][uniform], i);
 }
 
-void setUniformMatrix4fv(const char *uniform, const GLsizei &count, const GLboolean &transpose, const GLfloat *v)
+inline void setUniformMatrix4fv(const char *uniform, const GLsizei &count, const GLboolean &transpose, const GLfloat *v)
 {
 	glUniformMatrix4fv(shaderLocations[currentShader][uniform], count, transpose, v);
 }
 
-void prepareHUD()
+inline void prepareHUD()
 {
 	if (hudVAO == 0)
 	{
@@ -239,7 +291,7 @@ void prepareHUD()
 	}
 }
 
-void DrawText(const Animation *font, const map<uint32_t, SpriteCoords> *sprites, const vec2 &textPos, const TextAlignment &alignment, const char *fmt, ...)
+inline void DrawText(const Animation *font, const map<uint32_t, SpriteCoords> *sprites, const vec2 &textPos, const TextAlignment &alignment, const char *fmt, ...)
 {
 	if(fmt == nullptr)
 		return;
@@ -338,7 +390,7 @@ void DrawText(const Animation *font, const map<uint32_t, SpriteCoords> *sprites,
 	delete [] charVerts;
 }
 
-void DrawHealth(int Health, const SpriteCoords &coords, const float &x, const float &y, const TextAlignment &alignment)
+inline void DrawHealth(int Health, const SpriteCoords &coords, const float &x, const float &y, const TextAlignment &alignment)
 {
 	if(Health > 0)
 	{
@@ -397,7 +449,7 @@ void DrawHealth(int Health, const SpriteCoords &coords, const float &x, const fl
 	}
 }
 
-void DrawLives(int lives, const SpriteCoords &coords, const Animation *font, const map<uint32_t, SpriteCoords> *sprites, const float &x, const float &y)
+inline void DrawLives(int lives, const SpriteCoords &coords, const Animation *font, const map<uint32_t, SpriteCoords> *sprites, const float &x, const float &y)
 {
 	vertex *headVerts = new vertex[4];
 	int length = 0;
@@ -445,22 +497,134 @@ void DrawLives(int lives, const SpriteCoords &coords, const Animation *font, con
 	DrawText(font, sprites, vec2(x + coords.width, y-24), Left, "x%d", lives);
 }
 
-void LoadShaders();
+inline map<string, GLuint> GetShaderLocations(const GLuint &shader)
+{
+	map<string, GLuint> locations;
+	for (auto uniform : { "VertexColor", "modelview", "projection", "texture" })
+		locations[uniform] = glGetUniformLocation(shader, uniform);
+	return locations;
+}
 
-GLuint GenerateTexture(SDL_Surface *surface);
+inline void LoadShaders()
+{
+	string vertexShaderSource = trim(stringJoin("\n", vector<string>({
+		glsl_VertexShaderShared,
+		glsl_GenericVertexShaderMain })));
+	string fragmentShaderSource = trim(stringJoin("\n", vector<string>({
+		glsl_FragmentShaderShared,
+		glsl_GenericFragmentShaderMain })));
+	string colorizeFragmentShaderSource = trim(stringJoin("\n", vector<string>({
+		glsl_FragmentShaderShared,
+		glsl_rgb2hcv,
+		glsl_rgb2hsl,
+		glsl_hue2rgb,
+		glsl_hsl2rgb,
+		glsl_ColorizeFragmentShaderMain
+	})));
+	string framebufferFragmentShaderSource = trim(stringJoin("\n", vector<string>({
+		glsl_FragmentShaderShared,
+		glsl_RoughStep,
+		glsl_AdjustTexCoords,
+		glsl_FramebufferShaderMain
+	})));
+
+	GLuint defaultVertexShader = 0, defaultFragmentShader = 0, colorizeFragmentShader = 0, framebufferFragmentShader = 0;
+
+	string log;
+	log = Shaders::CompileShader(GL_VERTEX_SHADER, vertexShaderSource, defaultVertexShader);
+	if (log.length() > 0)
+	{
+		System::LogError("Error compiling default vertex shader:\n%s\n", log.c_str());
+		return;
+	}
+
+	log = Shaders::CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource, defaultFragmentShader);
+	if (log.length() > 0)
+	{
+		System::LogError("Error compiling default fragment shader:\n%s\n", log.c_str());
+		return;
+	}
+
+	log = Shaders::CompileShader(GL_FRAGMENT_SHADER, colorizeFragmentShaderSource, colorizeFragmentShader);
+	if (log.length() > 0)
+	{
+		System::LogError("Error compiling colorize fragment shader:\n%s\n", log.c_str());
+		return;
+	}
+
+	log = Shaders::CompileShader(GL_FRAGMENT_SHADER, framebufferFragmentShaderSource, framebufferFragmentShader);
+	if (log.length() > 0)
+	{
+		System::LogError("Error compiling framebuffer fragment shader\n%s\n", log.c_str());
+		return;
+	}
+
+	log = Shaders::LinkProgram(defaultVertexShader, defaultFragmentShader, defaultShader);
+	if (log.length() > 0)
+	{
+		System::LogError("Error linking default shader:\n%s\n", log.c_str());
+	}
+
+	log = Shaders::LinkProgram(defaultVertexShader, colorizeFragmentShader, colorizeShader);
+	if (log.length() > 0)
+	{
+		System::LogError("Error linking colorize shader:\n%s\n", log.c_str());
+	}
+
+	log = Shaders::LinkProgram(defaultVertexShader, framebufferFragmentShader, framebufferShader);
+	if (log.length() > 0)
+	{
+		System::LogError("Error linking framebuffer shader:\n%s\n", log.c_str());
+	}
+
+	glDeleteShader(defaultVertexShader);
+	glDeleteShader(defaultFragmentShader);
+	glDeleteShader(colorizeFragmentShader);
+	glDeleteShader(framebufferFragmentShader);
+
+	shaderLocations[defaultShader] = GetShaderLocations(defaultShader);
+	shaderLocations[colorizeShader] = GetShaderLocations(colorizeShader);
+	shaderLocations[framebufferShader] = GetShaderLocations(framebufferShader);
+}
+
+inline GLuint GenerateTexture(SDL_Surface *surface)
+{
+	GLuint texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	return texture;
+}
+
+inline bool Compare(const Node &a, const Node &b)
+{
+	return (a.rc.h < b.rc.h);
+}
+
+inline void SortDescending(vector<Node> &nodes)
+{
+	std::sort(nodes.rbegin(), nodes.rend(), Compare);
+}
+
+#pragma endregion Helper Functions
 
 Game::Game(int argc, char *argv[]) :
-WindowWidth(640), 
-WindowHeight(480), 
-Fullscreen(false), 
-BorderlessFullscreen(false), 
-level(nullptr),
-tileset(nullptr),
-anims(nullptr),
-player(nullptr),
-Tilesheet(0),
-state(MainMenu),
-showFPS(false)
+	WindowWidth(640),
+	WindowHeight(480),
+	Fullscreen(false),
+	BorderlessFullscreen(false),
+	level(nullptr),
+	tileset(nullptr),
+	anims(nullptr),
+	player(nullptr),
+	Tilesheet(0),
+	state(MainMenu),
+	showFPS(false)
 {
 	LevelFile = "";
 	string EpisodeFile = "";
@@ -1308,7 +1472,7 @@ void Game::Draw(const float &timeElapsed)
 
 	#pragma region Draw the Frame to the Window
 
-	useProgram(defaultShader);
+	useProgram(framebufferShader);
 	glColor3f(1, 1, 1);
 	glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1607,15 +1771,11 @@ void Game::PrepareFramebuffer()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (int)(ASPECT_RATIO * 480), 480, 0, GL_BGRA, GL_UNSIGNED_BYTE, nullptr);
 
 	// Generate the Depth Buffer
 	glBindTexture(GL_TEXTURE_2D, framebufferTextures[1]);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, (int)(ASPECT_RATIO * 480), 480, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, nullptr);
 
 	glGenFramebuffers(1, &framebuffer);
@@ -1654,95 +1814,6 @@ void Game::PrepareFramebuffer()
 
 	glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(vertex), framebufferVerts, GL_STATIC_DRAW);
 	glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-map<string, GLuint> GetShaderLocations(const GLuint &shader)
-{
-	map<string, GLuint> locations;
-	for (auto uniform : { "VertexColor", "modelview", "projection", "texture" })
-		locations[uniform] = glGetUniformLocation(shader, uniform);
-	return locations;
-}
-
-void LoadShaders()
-{
-	string vertexShaderSource = trim(stringJoin("\n", vector<string>({ 
-		glsl_VertexShaderShared, 
-		glsl_GenericVertexShaderMain })));
-	string fragmentShaderSource = trim(stringJoin("\n", vector<string>({ 
-		glsl_FragmentShaderShared, 
-		glsl_GenericFragmentShaderMain })));
-	string colorizeFragmentShaderSource = trim(stringJoin("\n", vector<string>({
-		glsl_FragmentShaderShared,
-		glsl_rgb2hcv,
-		glsl_rgb2hsl,
-		glsl_hue2rgb,
-		glsl_hsl2rgb,
-		glsl_ColorizeFragmentShaderMain
-	})));
-
-	GLuint defaultVertexShader = 0, defaultFragmentShader = 0, colorizeFragmentShader = 0;
-
-	string log;
-	log = Shaders::CompileShader(GL_VERTEX_SHADER, vertexShaderSource, defaultVertexShader);
-	if (log.length() > 0)
-	{
-		System::LogError("Error compiling default vertex shader 4:\n%s\n", log.c_str());
-		return;
-	}
-
-	log = Shaders::CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource, defaultFragmentShader);
-	if (log.length() > 0)
-	{
-		System::LogError("Error compiling default fragment shader 4:\n%s\n", log.c_str());
-		return;
-	}
-
-	log = Shaders::CompileShader(GL_FRAGMENT_SHADER, colorizeFragmentShaderSource, colorizeFragmentShader);
-	if (log.length() > 0)
-	{
-		System::LogError("Error compiling colorize vertex shader 4:\n%s\n", log.c_str());
-		return;
-	}
-
-	log = Shaders::LinkProgram(defaultVertexShader, defaultFragmentShader, defaultShader);
-	if (log.length() > 0)
-	{
-		System::LogError("Error linking default shader 4:\n%s\n", log.c_str());
-	}
-
-	log = Shaders::LinkProgram(defaultVertexShader, colorizeFragmentShader, colorizeShader);
-	if (log.length() > 0)
-	{
-		System::LogError("Error linking colorize shader 4:\n%s\n", log.c_str());
-	}
-
-	shaderLocations[defaultShader] = GetShaderLocations(defaultShader);
-	shaderLocations[colorizeShader] = GetShaderLocations(colorizeShader);
-}
-
-GLuint GenerateTexture(SDL_Surface *surface)
-{
-	GLuint texture;
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
-	glGenerateMipmap(GL_TEXTURE_2D);
-	return texture;
-}
-
-bool _startsWith(const char *a, const char *b)
-{
-	if (strlen(a) < strlen(b))
-		return false;
-	for (size_t i = 0; i < strlen(b); i++)
-		if (a[i] != b[i])
-			return false;
-	return true;
 }
 
 void Game::LoadSettings()
@@ -1860,58 +1931,6 @@ void Game::BlitSurface(SDL_Surface *src, SDL_Surface *dst, int offsetX, int offs
 	}
 }
 
-Game::~Game()
-{
-	if (tileset != nullptr)
-	{
-		delete tileset;
-	}
-	if (level != nullptr)
-	{
-		delete level;
-	}
-	if (player != nullptr)
-	{
-		delete player;
-	}
-	if (anims != nullptr)
-	{
-		delete anims;
-	}
-
-	glBindVertexArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glDeleteVertexArrays(8, LayerVAOs);
-	glDeleteBuffers(8, Layers);
-	glDeleteVertexArrays(1, &playerVAO);
-	glDeleteBuffers(1, &playerVBO);
-	glDeleteVertexArrays(1, &framebufferVAO);
-	glDeleteBuffers(1, &framebufferVBO);
-	glDeleteTextures(2, framebufferTextures);
-	for (size_t i = 0; i < SpriteSheets.size(); i++)
-	{
-		glDeleteTextures(1, &SpriteSheets[i]);
-	}
-	glDeleteTextures(1, &Tilesheet);
-	SDL_Quit();
-}
-
-struct Node
-{
-	SDL_Rect rc;
-	int SpriteID;
-};
-
-bool Compare(const Node &a, const Node &b)
-{
-	return (a.rc.h < b.rc.h);
-}
-
-void SortDescending(vector<Node> &nodes)
-{
-	std::sort(nodes.rbegin(), nodes.rend(), Compare);
-}
-
 void Game::LoadSpriteCoords()
 {
 	std::vector<Node> nodes;
@@ -1925,8 +1944,8 @@ void Game::LoadSpriteCoords()
 			{
 				const AnimationFrame *frame = anim->GetFrame(k);
 				Node node;
-				node.rc.w = frame->getWidth()+1;
-				node.rc.h = frame->getHeight()+1;
+				node.rc.w = frame->getWidth() + 1;
+				node.rc.h = frame->getHeight() + 1;
 				node.SpriteID = frame->getIndex();
 				nodes.push_back(node);
 			}
@@ -1956,3 +1975,47 @@ void Game::LoadSpriteCoords()
 		Sprites[nodes[i].SpriteID] = coord;
 	}
 }
+
+Game::~Game()
+{
+	if (tileset != nullptr)
+	{
+		delete tileset;
+	}
+	if (level != nullptr)
+	{
+		delete level;
+	}
+	if (player != nullptr)
+	{
+		delete player;
+	}
+	if (anims != nullptr)
+	{
+		delete anims;
+	}
+
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glDeleteVertexArrays(8, LayerVAOs);
+	glDeleteBuffers(8, Layers);
+	glDeleteVertexArrays(1, &playerVAO);
+	glDeleteBuffers(1, &playerVBO);
+	glDeleteVertexArrays(1, &framebufferVAO);
+	glDeleteBuffers(1, &framebufferVBO);
+	glDeleteTextures(2, framebufferTextures);
+	useProgram(0);
+	glDeleteProgram(defaultShader);
+	glDeleteProgram(colorizeShader);
+	for (size_t i = 0; i < SpriteSheets.size(); i++)
+	{
+		glDeleteTextures(1, &SpriteSheets[i]);
+	}
+	glDeleteTextures(1, &Tilesheet);
+
+	LogAllGLErrors();
+
+	SDL_Quit();
+}
+
+

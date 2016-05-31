@@ -142,6 +142,9 @@
     <None Include="GenericVertex.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="framebufferFragmentShader.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="OpenJazz2.rc">

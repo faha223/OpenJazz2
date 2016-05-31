@@ -120,6 +120,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ColorizeFragment.glsl" />
+    <None Include="framebufferFragmentShader.glsl" />
     <None Include="GenericFragment.glsl" />
     <None Include="GenericVertex.glsl" />
     <None Include="KeyBindings.ini">

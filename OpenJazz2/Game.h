@@ -74,7 +74,6 @@ private:
 	std::vector<Event> Events;
 	std::vector<Actor> BackgroundActors;
 	std::vector<Actor> ForegroundActors;
-
 	SDL_Window *window;
 	SDL_GLContext glContext;
 	std::map<uint32_t, bool> keyboard;
